@@ -1,0 +1,33 @@
+{
+  "AWSTemplateFormatVersion":"2010-09-09",
+  "Description": "Alcide Audit analyzer: Create log subscription filter for a specific EKS cluster",
+  "Parameters":{
+
+    "DestinationARN":{
+      "Type":"String",
+      "Default":"",
+      "Description":"ARN of logs destination"
+    },
+    "EKSClusterName":{
+      "Type":"String",
+      "Default":"",
+      "Description":"Name of EKS cluster to forward logs from"
+    },
+    "FilterPattern":{
+      "Type":"String",
+      "Default":"",
+      "Description":"Filter pattern to filter events to be sent to log destination; Leave empty to send all logs"
+    }
+  },
+
+  "Resources":{
+    "SubscriptionFilter" : {
+      "Type" : "AWS::Logs::SubscriptionFilter",
+      "Properties" : {
+        "LogGroupName" : {"Fn::Join" : [ "", ["/aws/eks/", { "Ref" : "EKSClusterName" }, "/cluster"] ]},
+        "FilterPattern" : { "Ref" : "FilterPattern" },
+        "DestinationArn" : { "Ref" : "DestinationARN" }
+      }
+    }
+  }
+}

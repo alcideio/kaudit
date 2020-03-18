@@ -1,0 +1,76 @@
+name: Test Alcide kAudit Chart
+
+on:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    # https://crontab.guru/
+    - cron:  '0 0	* * *'
+  push:
+    branches:
+      - '*'
+
+jobs:
+  advisor-tests:
+    name: kaudit test on k8s ${{ matrix.config.kubever }}
+    runs-on: ubuntu-latest
+
+  # env:
+  #   CTEST_OUTPUT_ON_FAILURE: ON
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          # - kubever: v1.14.10
+          # - kubever: v1.15.7
+          - kubever: v1.16.4
+          # - kubever: v1.17.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Launch KIND cluster ${{ matrix.config.kubever }}
+        run: |
+          kind create cluster --config hack/kind-config.yaml --image kindest/node:${{ matrix.config.kubever }} --name kaudit-${{ matrix.config.kubever }}
+
+          kubectl cluster-info
+          kubectl api-resources
+
+      - name: Install Helm 3
+        run: |
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 
+          chmod 700 get_helm.sh
+          ./get_helm.sh
+
+
+      - name: Install Alcide kAudit
+        run: |
+          kubectl create ns alcide-kaudit
+          helm upgrade -i kaudit deploy/charts/kaudit --wait \
+            --set clusterName=mycluster \
+            --set k8s.mode=auditsink \
+            --set image.pullSecretToken=${{ secrets.BUILD_TOKEN }}  \
+            --set runOptions.enableStateApi=true
+
+
+          kubectl -n alcide-kaudit get pods,statefulsets,configmaps
+          kubectl -n alcide-kaudit describe pods
+
+          #kubectl -n alcide-kaudit port-forward svc/kaudit-mycluster 7000:443 &
+          #sleep 15s
+          #curl  -k https://localhost:7000/state 
+
+      - name: Scan Local Cluster
+        uses: alcideio/advisor-action@v1.1.0   
+        with:
+          exclude_namespaces: '-'
+          include_namespaces: 'alcide-kaudit'
+          output_file: 'advisor-scan-${{ matrix.config.kubever }}.html'
+
+      - name: Upload Alcide Advisor Scan Report
+        uses: actions/upload-artifact@v1
+        with:
+          name: 'advisor-scan-${{ matrix.config.kubever }}.html' 
+          path: 'advisor-scan-${{ matrix.config.kubever }}.html' 
+

@@ -1,0 +1,4 @@
+__install
+kaudit-tmp.txt
+#deploy/charts/kaudit/certs/*
+deploy/install/kaudit_for_*.yaml

@@ -1,0 +1,26 @@
+{{- if .Values.ingress.enable -}}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: kaudit-{{ .Values.clusterName }}-ingress
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: kaudit
+    app-name: kaudit-{{ .Values.clusterName }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingress.ingressControllerClass }}
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  tls:
+  - hosts:
+    - kaudit-{{ .Values.clusterName }}.{{ .Values.ingress.subDomain }}
+    secretName: kaudit-{{ .Values.clusterName }}-certs
+  rules:
+    - host: kaudit-{{ .Values.clusterName }}.{{ .Values.ingress.subDomain }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: kaudit-{{ .Values.clusterName }}
+              servicePort: 443                       
+{{- end }}

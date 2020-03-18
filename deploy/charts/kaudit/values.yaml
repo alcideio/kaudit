@@ -1,0 +1,122 @@
+namespace: alcide-kaudit
+clusterName: mycluster
+image:
+  kaudit: "gcr.io/dcvisor-162009/alcide/dcvisor/kaudit:latest"
+  pullPolicy: Always #Always for :latest or no tag, IfNotPresent for other tags
+  pullSecretToken: GetYourTokenFromAlcide
+
+tls:
+  # self-signed | external
+  mode: "self-signed" 
+
+  # Externally signed certificates 
+  # --> no need to base64 encode
+  # Files must be under certs named: ca.pem, key.pem, cert.pem
+  selfSigned:
+    alternativeNames: [] #["kaudit.yourdomain.io"]
+
+
+k8sAuditEnvironment:  k8s # Audit Logs Source - one of: k8s, gke, aks, eks, s3
+
+# Customise Alcide kAudit Policy
+kauditPolicyFile: kaudit-policy/default-policy.yaml
+
+runOptions:
+  # Pre Approve Eula
+  eulaSign: false
+  #  Activate Audit log analysis 
+  activateAnalysis: true
+  #  Enable State API 
+  enableStateApi: false
+
+ingress:
+  # Enable Ingress Access to Alcide kAudit
+  enable: false
+  #Ingress SubDomain Hostname .... access this kAudit instance by kaudit-mycluster.secops.mycompany.com
+  subDomain: secops.mycompany.io
+  # The ingress controller class to drive kAudit Ingress objects
+  ingressControllerClass: kaudit-ingress
+
+# storage class related to environment, or nil for environment's default
+# StorageClass options:
+#  GKE: "gpd" (a configured StorageClass, see above)
+#  EKS: "gp2" (a configured StorageClass, see above)
+#  AKS: "managed-premium" or default
+#  "local-storage" (a configured StorageClass, see above, as well as related toleration/affinity configuration below)
+storage:
+  className:
+  size: 100Gi
+
+resources:
+  javaXmX: 7G
+  memoryRequest: "2Gi"
+  cpuRequest: "1"  
+  memoryLimit: "8Gi"
+  cpuLimit: "2"
+
+
+# Azure
+aks:
+  eventHubName: ""              # Azure EventHubName name (for AKS). If using a non-default ConsumerGroup ($Default), configure it in 'consumer-group-name'.
+  eventHubconnectionString: ""  # Azure EventHub connection string (for AKS)
+  consumerGroupName: ""         # Azure EventHubName ConsumerGroup name (for AKS), if using a non-default ConsumerGroup (i.e. \$Default).
+
+# GCP
+gke:
+  projectId: ""                 # GKE-project (for GKE)
+  pubsubSubscriptionId: ""      # GKE PubSub subscription ID (only if consuming audit logs via PubSub instead of StackDriver)
+  token: ""
+  storageType: "pd-ssd"  # Or pd-standard
+
+# EKS or S3
+aws:
+  kinesisStreamName: ""  # AWS Kinesis stream name (for EKS)
+  region: ""             # AWS Kinesis stream region (for EKS and S3)
+  accessKeyId: ""        # AWS Kinesis stream credentials (for EKS and S3)
+  secretAccessKey: ""
+  s3BucketName: ""       # AWS S3 bucket name (for S3)
+  s3ResourceKeyPrefix: "" # AWS S3 logs resources keys prefix (for S3)
+
+k8s:
+  # webhook or auditsink
+  mode: "auditsink" 
+
+alcide:
+  token:
+
+prometheus:
+  token:  
+
+#
+# Vault 
+#
+#  https://www.hashicorp.com/blog/injecting-vault-secrets-into-kubernetes-pods-via-a-sidecar/
+# kubectl -n demo exec -ti vault-0 /bin/sh
+# cat <<EOF > /home/vault/kaudit-policy.hcl
+# path "secret/data/alcide/kaudit-*" {
+#   capabilities = ["read"]
+# }
+# EOF
+# vault policy write kaudit /home/vault/kaudit-policy.hcl
+# vault auth enable kubernetes
+# vault write auth/kubernetes/config \
+#    token_reviewer_jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+#    kubernetes_host=https://${KUBERNETES_PORT_443_TCP_ADDR}:443 \
+#    kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+# vault write auth/kubernetes/role/kaudit-mycluster \
+#    bound_service_account_names=alcide-k8s-kaudit-mycluster \
+#    bound_service_account_namespaces=alcide-kaudit \
+#    policies=kaudit \
+#    ttl=1h
+#  vault kv put secret/alcide/kaudit-mycluster \
+#     token=''  \
+#     prometheusToken=''  \
+#     gkeToken='' \
+#     aksConnectionString=''  \
+#     awsSecretAccessKey='somesecret'
+
+vault:
+  mode: "none" # none | vault | agent-inject
+  # For "vault" mode this parameter is required
+  vaultServer: "http://vault.demo:8200" 
+  image: "vault:1.3.2"

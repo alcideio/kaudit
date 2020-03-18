@@ -1,0 +1,92 @@
+# Audit policy syntax:
+# A policy is defined in Yaml syntax. A policy is composed of rules. Each rule the following syntax:
+# id: unique ID of rule. Can be used to reference the rule by other rules. Format: id-namespace/id-key. 'system' id-namespace is reserved.
+# name: meaningful rule name, presented to user on event match
+# documentation: rule documentation string
+# status: true/false (default: true), indicates if matches should be reported
+# combine-op: and/or (default: and), the logical operator to combine conditions values
+# conditions: one or more logical conditions to match audit entries
+#   a reference condition: has the logical value of another rule, whose id is the same as the ref-id
+#   a logical condition: matches an audit entry's field to the match-value using a match operator
+#   field: audit entry field name:
+#      principal
+#      user-id
+#      username
+#      user-groups
+#
+#      impersonated-principal
+#      impersonated-user-id
+#      impersonated-username
+#      impersonated-groups
+#
+#      access-type
+#
+#      caller-ip
+#      caller-ip-asn
+#      caller-ip-country
+#
+#      api-group
+#      api-version
+#      resource-type
+#      resource-namespace
+#      resource-name
+#      subresource
+#      subresource-exec-command
+#      subresource-exec-container
+#      subresource-exec-tty
+#      subresource-exec-stdin
+#      subresource-exec-stdout
+#      subresource-logs-container
+#      unusual-uri
+#      verb
+#
+#      role
+#      cluster-role
+#
+#      non-authorized
+#      status
+#      status-code
+#      status-reason
+#
+#      original-user-agent
+#      caller-supplied-user-agent
+#
+#      ua-command
+#      ua-gcloud
+#      ua-python
+#      ua-term
+#      ua-mozilla
+#      ua-applewebkit
+#      ua-chrome
+#      ua-safari
+#   match-op: =/!=/~/!~ (equals, non-equals, regex-match, non-regex-match
+#   match-value: value used in match operation. Empty value with = match-op can be used to match event who doesn't have the field.
+#
+# Example:
+#- id: user/r1573041380038-21535
+#  name: pod execution in production namespaces
+#  description: execution of pods in namespaces whose name contains 'production'
+#  conditions:
+#   - {ref-id: user/pod-execution-rule}
+#   - {field: resource-namespace, match-op: ~, match-value: production}
+#- id: user/pod-execution-rule
+#  name: pod execution rule
+#  status: false
+#  combine-op: and
+#  conditions:
+#   - {field: verb, match-op: =, match-value: create}
+#   - {field: resource-type, match-op: =, match-value: pods}
+#   - {field: subresource, match-op: =, match-value: exec}
+
+
+- id: user/pod-creation
+  name: pod creation
+  conditions:
+    - {field: verb, match-op: =, match-value: create}
+    - {field: resource-type, match-op: =, match-value: pods}
+    - {field: subresource, match-op: =, match-value: ''}
+- id: user/pod-execution
+  name: pod execution
+  conditions:
+    - {field: resource-type, match-op: =, match-value: pods}
+    - {field: subresource, match-op: =, match-value: exec}

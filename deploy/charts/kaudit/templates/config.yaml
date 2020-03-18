@@ -1,0 +1,36 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaudit-{{ .Values.clusterName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: kaudit
+    app-name: kaudit-{{ .Values.clusterName }} 
+data:
+  ca.pem: "" # pem certificate
+  metadata-exclusion: "kubectl.kubernetes.io/last-applied-configuration"
+  audit-source: |
+    audit-env: {{ .Values.k8sAuditEnvironment | quote }}    # Audit Logs Source - one of: k8s, gke, aks, eks, s3
+    cluster: {{ .Values.clusterName | quote }}              # Name of cluster. For GKE - the GKE cluster name, otherwise - user provided unique name.
+    project: {{ .Values.gke.projectId | quote  }}                           # GKE-project (for GKE)
+    pubsub-subscription-id: {{ .Values.gke.pubsubSubscriptionId | quote  }} # GKE PubSub subscription ID (only if consuming audit logs via PubSub instead of StackDriver)
+    event-hub-name: {{ .Values.aks.eventHubName | quote  }}                 # Azure EventHubName name (for AKS). If using a non-default ConsumerGroup ($Default), configure it in 'consumer-group-name'.
+    consumer-group-name: {{ .Values.aks.consumerGroupName | quote  }}       # Azure ConsumerGroup name (for AKS), if using a non-default ConsumerGroup (i.e. \$Default).
+    stream-name: {{ .Values.aws.kinesisStreamName | quote  }}         # AWS Kinesis stream name (for EKS)
+    region: {{ .Values.aws.region | quote  }}                         # AWS Kinesis stream region (for EKS and S3)
+    access-key-id: {{ .Values.aws.accessKeyId | quote  }}             # AWS Kinesis stream credentials (for EKS and S3)
+    bucket-name: {{ .Values.aws.s3BucketName | quote  }}              # AWS S3 bucket name (for S3)
+    resource-key-prefix: {{ .Values.aws.s3ResourceKeyPrefix | quote  }} # AWS S3 logs resources keys prefix (for S3)
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaudit-{{ .Values.clusterName }}-keyconvert
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: kaudit
+    app-name: kaudit-{{ .Values.clusterName }} 
+data:
+{{ (.Files.Glob "scripts/convert.sh").AsConfig | indent 2 }}

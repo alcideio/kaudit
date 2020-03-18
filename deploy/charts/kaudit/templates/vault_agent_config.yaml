@@ -1,0 +1,56 @@
+{{- if eq .Values.vault.mode "vault" }}
+---
+kind: ConfigMap
+metadata:
+  name: vault-agent-config-kaudit-{{ .Values.clusterName }}
+  namespace: {{ .Values.namespace }}
+apiVersion: v1
+data:
+  vault-agent-config.hcl: |-
+    exit_after_auth = true
+    pid_file = "/home/vault/pidfile"
+    auto_auth {
+        method "kubernetes" {
+            mount_path = "auth/kubernetes"
+            config = {
+                role = "kaudit-{{ .Values.clusterName }}"
+            }
+        }
+    }
+    listener "tcp" {
+        address = "localhost:8100"
+        tls_disable = true
+    }
+    cache {
+        use_auto_auth_token = true
+    }
+    sink "file" {
+        config = {
+            path = "/vault/.vault-token"
+        }
+    }
+    template {
+      destination = "/vault/secrets/kaudit.conf"
+      contents = <<EOH
+      {{"{{- with secret \"secret/alcide/kaudit-"}}{{- .Values.clusterName -}}{{"\" -}}"}}
+      {{"{{ range $k, $v := .Data.data }}"}}
+      {{"\"{{ $k }}\": \"{{ $v }}\""}}
+      {{"{{ end }}"}}
+      {{"{{- end -}}"}}      
+      EOH
+    }
+{{- end }}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
