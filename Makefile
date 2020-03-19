@@ -7,9 +7,6 @@ VERSION ?= 1.0.0
 .phony: help tutorials
 
 
-DOCKER_IMAGE ?= alcide/helmscan
-DOCKER_TAG ?= `git rev-parse --abbrev-ref HEAD`
-
 create-kind-cluster:  ##@Test KIND
 	kind create cluster --config hack/kind-config.yaml --image kindest/node:v1.16.4 --name kaudit-v1.16
 
