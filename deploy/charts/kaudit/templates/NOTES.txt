@@ -1,0 +1,68 @@
+--------------------------------------
+Thank You For Installing Alcide kAudit
+--------------------------------------
+
+To extract {{ .Values.namespace }}/kaudit-{{ .Values.clusterName }} ca.pem use:
+kubectl -n {{ .Values.namespace }} get secrets kaudit-{{ .Values.clusterName }}-certs -o=jsonpath="{@.data['ca\.pem']}" | base64 -d
+
+{{- if eq .Values.k8sAuditEnvironment "k8s" }}
+{{- if eq .Values.k8s.mode "webhook" }}
+
+"Add to your FluentD output.conf" -> "Add to your FluentD configuration".
+Regarding the comment "# match the tag set by the source, so whatever comes to: https://<FluentD-server>/audit:8888" - this is something that the user must adapt to how he set up the current incoming pipeline from the API-Server WebHook . Also, if there is already a FluentD configuration, the user probably needs to apply a 2 "match" section to te same input, which may require some sort of Copy operator.
+Regarding the kAudit endpoint: Isn't it missing the port number? Also, if it's in a different cluster, there should be at least a hint of how to set it up (related to your ingress stuff)
+Even though it's the default, to avoid some misunderstandings, I suggest to uncomment "#https_method post", and to remove the comment line before it "# method post or put, post is default"
+Also, regarding the CA file: I don't know if you give the user an option to use a signed certificate (i.e. not self-signed), but if so then I believe what should be there is the CA public certificate and not kAudit public certificate 
+
+-------------------------------------
+Configure Alcide kAudit with Fluentd:
+-------------------------------------
+
+1. Extract the CA certificate of {{ .Values.namespace }}/kaudit-{{ .Values.clusterName }} to a file ca.pem:
+    $ kubectl -n {{ .Values.namespace }} get secrets kaudit-{{ .Values.clusterName }}-certs -o=jsonpath="{@.data['ca\.pem']}" | base64 -d > ca.pem
+
+2. Make the CA certificate available to your flunetd server (Note that you're deploying to the correct cluster):
+    $ kubectl create -n fluentd secret generic kaudit-ca-cert --from-file=ca.pem
+
+3.  Update your FluentD deployment to mount the secret FluentD/kaudit-ca-cert
+    ...
+        # Your FluentD container volume mounts
+        volumeMounts:
+          - mountPath: "/etc/secrets/output/kaudit_ca.crt"
+               subPath: kaudit_ca.crt
+            name: kaudit-ca-cert
+            readOnly: true
+    ...            
+      volumes:
+        - name: kaudit-ca-cert
+          secret:
+            secretName: kaudit-ca-cert    
+            items:
+              - key: ca.pem
+                path: kaudit_ca.crt            
+    ...
+
+4. Add to your FluentD configuration
+    # Note: specify the tag that was used by the FluentD log source webhook endpoint, for example: https://<FluentD-server>/audit:8888
+    <match audit>
+      @type http
+      # Alcide kAudit URL, from its service name & port and /auditsink suffix
+      # Use this endpoint when FluentD runs inside the cluster
+      endpoint "{{ printf "https://kaudit-%s.%s.svc" .Values.clusterName .Values.namespace }}/auditsink"
+{{- if .Values.ingress.enable }}      
+      # If Fluentd is external to the cluster where kAudit runs.
+      # endpoint "https://kaudit-{{ .Values.clusterName }}.{{ .Values.ingress.subDomain }}/auditsink"
+{{- end }}
+
+      content_type application/json
+      <format>
+      @type single_value
+      </format>
+
+      # TLS configuration
+      # CA certificate
+      tls_ca_cert_path /etc/secrets/output/kaudit_ca.crt
+    </match>
+
+{{- end }}
+{{- end }}
