@@ -30,9 +30,9 @@ It is suggested (but not mandatory) to name the CloudFormation stacks after the 
   > SourceAccount is the only mandatory parameter. the rest will be used for tagging the resources created by this stack <br />
 
     ```
-    AWS_PROFILE=<logs account profile name> AWS_REGION=<AWS region> aws cloudformation create-stack --stack-name <eks cluster name> /
-    --template-body file://PATH/TO/AUDIT-ANALYZER/CLOUDFORMATION/logsAccount.json /
-    --capabilities CAPABILITY_IAM /
+    AWS_PROFILE=<logs account profile name> AWS_REGION=<AWS region> aws cloudformation create-stack --stack-name <eks cluster name> \
+    --template-body file://PATH/TO/AUDIT-ANALYZER/CLOUDFORMATION/logsAccount.json \
+    --capabilities CAPABILITY_IAM \
     --parameters ParameterKey="SourceAccount",ParameterValue="<EKS Account ID>" \
                  ParameterKey="ApplicationComponent",ParameterValue="audit-analyzer" \
                  ParameterKey="ApplicationOwner",ParameterValue="<OWNER>" \
