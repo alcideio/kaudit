@@ -104,4 +104,3 @@
   conditions:
     - {field: verb, match-op: =, match-value: create}
     - {field: resource-namespace, match-op: =, match-value: default}
- 
