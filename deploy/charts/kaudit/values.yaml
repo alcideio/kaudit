@@ -48,11 +48,11 @@ storage:
   size: 100Gi
 
 resources:
-  javaXmX: 7G
+  javaXmX: 4G
   memoryRequest: "2Gi"
   cpuRequest: "1"  
-  memoryLimit: "8Gi"
-  cpuLimit: "2"
+  memoryLimit: "5Gi"
+  cpuLimit: "1"
 
 
 # Azure

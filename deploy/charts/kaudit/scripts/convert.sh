@@ -1,5 +1,5 @@
 #!/bin/bash -x
-set -eu      
+set -eu
 
 SRCDIR=/input
 DSTDIR=/output
@@ -19,10 +19,10 @@ openssl pkcs12 -export -CAfile $SRCDIR/ca.pem -in $SRCDIR/cert.pem -inkey $SRCDI
 keytool -importkeystore -srckeystore $DSTDIR/keystore.p12 -srcstorepass abcdef -destkeystore $DSTDIR/keystore.jks -deststorepass abcdef -noprompt
 
 openssl pkcs12 -in $DSTDIR/keystore.p12 -passin pass:abcdef -nodes -nocerts -out $DSTDIR/key.p12
-#cat $DSTDIR/key.p12
+
 rm $DSTDIR/keystore.p12
 
 echo Converting key.pem to PKCS#8 as $DSTDIR/key.pk8.pem
 openssl pkcs8 -topk8 -in $SRCDIR/key.pem -nocrypt -out $DSTDIR/key.pk8.pem
 
-exit 0   
+exit 0
