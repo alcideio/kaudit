@@ -90,3 +90,18 @@
   conditions:
     - {field: resource-type, match-op: =, match-value: pods}
     - {field: subresource, match-op: =, match-value: exec}
+- id: user/namespace-create
+  name: namespace created
+  status: true
+  combine-op: and
+  conditions:
+    - {field: verb, match-op: =, match-value: create}
+    - {field: resource-type, match-op: =, match-value: namespace}
+- id: user/do-not-deploy-to-default-namespace
+  name: resource created in the default namespace
+  status: true
+  combine-op: and
+  conditions:
+    - {field: verb, match-op: =, match-value: create}
+    - {field: resource-namespace, match-op: =, match-value: default}
+ 
