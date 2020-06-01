@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaudit-integrations-{{ .Values.clusterName }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: kaudit
+    app-name: kaudit-{{ .Values.clusterName }}
+data:
+  audit-integration: |
+{{ .Files.Get .Values.kauditIntegrationsFile  | indent 4 -}}
+

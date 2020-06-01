@@ -20,6 +20,7 @@ data:
     stream-name: {{ .Values.aws.kinesisStreamName | quote  }}         # AWS Kinesis stream name (for EKS)
     region: {{ .Values.aws.region | quote  }}                         # AWS Kinesis stream region (for EKS and S3)
     access-key-id: {{ .Values.aws.accessKeyId | quote  }}             # AWS Kinesis stream credentials (for EKS and S3)
+    assumed-role: ""                                                  # AWS role (ARN) that can be assumed using STS, instead of access-key-id & awsSecretAccessKey (for EKS and S3)    
     bucket-name: {{ .Values.aws.s3BucketName | quote  }}              # AWS S3 bucket name (for S3)
     resource-key-prefix: {{ .Values.aws.s3ResourceKeyPrefix | quote  }} # AWS S3 logs resources keys prefix (for S3)
 

@@ -21,6 +21,10 @@ k8sAuditEnvironment:  k8s # Audit Logs Source - one of: k8s, gke, aks, eks, s3
 # Customise Alcide kAudit Policy
 kauditPolicyFile: kaudit-policy/default-policy.yaml
 
+# Customise Alcide kAudit Integrations
+kauditIntegrationsFile: integrations/audit-integration.yaml
+
+
 runOptions:
   # Pre Approve Eula
   eulaSign: false

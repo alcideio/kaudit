@@ -1,0 +1,93 @@
+# kAudit integrations configurations.
+# There are 3 types of integrations: detections, selections (policy matches), and activity (raw audit entries)
+# The configuration of each integration type has 3 sections:
+# - type (required): the integration type
+# - target (required): one or more destinations (endpoints) for sending matched data.
+#   Supported targets include: Slack, HTTP-API, Syslog, Kafka topic, Azure Sentinel & Azure Monitor, AWS S3
+#   Each kind of target requires specific configuration, e.g. credentials or target address.
+#   Data is not sent to stopped targets.
+# - data-filter (optional): a filter determining which processed results to send to the target(s).
+#   The filter's specifics depend on the integration type (i.e. the processed data to filter).
+# - name (optional): a short name for the integration. Up to 15 alphanumeric, '_', '-' and ' ' characters.
+#
+# Below is an extended sample configuration.
+#
+# Values in a target configuration which are sensitive, like credentials or tokens, may be configured
+# by referencing an environment variable, a k8s secret or an entry in externally mounted secrets (e.g from Vault),
+# using the following syntax:
+# Sensitive value configuration with value 'foo' (note the mandatory prefix 'val-' in the field name), set up for example through Vault:
+# val-my-key: foo
+# A configuration of field 'my-credentials' that needs to be initialized to the sensitive value in 'val-my-key' (note the mandatory prefix 'ref/' in the field name):
+# ref/my-credentials: val-my-key
+# The relationship between these 2 fields is:
+# If 'val-my-key' field is present, field 'my-credentials' will get its value, otherwise it will not have a value.
+# Changes to the the value of 'val-my-key' will automatically update the referencing field (the one named 'my-credentials').
+
+#
+# Here's an example for a partial configuration of integration, with externally-injected AWS credentials:
+#
+
+#- type: detections
+#  target:
+#    - target-type: aws-s3
+#    - aws-bucket: bucket
+#    - aws-region: us-west
+#    - aws-access-key-id: my-key-id
+#    - ref/aws-secret-access-key: val-x
+# And the sensitive value 'my-access-key' is injected into 'aws-secret-access-key' with a configuration like this:
+#- val-x: my-access-key
+#    - type: detections
+#      target:
+#        - - slack
+#          - slack-uri: 'https://hooks.slack.com/services/xYz'
+#            rate-limit: 10
+#        - - azure
+#          - workspace-id: my-azure-analytics-workspace
+#            shared-key: my-asuzre-shared-key
+#            stopped: true
+#        - - http-api
+#          - http-api-uri: 'https://my-azure-analytics-workspace'
+#            http-api-token-header: x-token
+#            http-api-token: 'x123456789'
+#            stopped: true
+#        - - kafka
+#          - kafka-broker: my-kafka-broker
+#            kafka-topic: my-topic
+#            stopped: true
+#      data-filter:
+#        etype:
+#          - principal
+#          - resource
+#          - cluster
+#        category:
+#          - alcide.category/incident
+#          - alcide.category/anomaly
+#        confidence:
+#          - high
+#          - medium
+#        entity-no-match: ^system:|^admin$|^cluster-autoscaler$|^10\\.(1|2)?\\d{1,2}\\.(1|2)?\\d{1,2}\\.(1|2)?\\d{1,2}$$
+#    - type: selections
+#      target:
+#        - - http-api
+#          - http-api-uri: 'https://my-api-target.com/api/xYz'
+#            rate-limit: 10
+#        - - syslog
+#          - syslog-host: my-syslog
+#            syslog-port: 5555
+#            syslog-tcp: false
+#      data-filter:
+#         entity-no-match: ^system:|^admin$
+#         rules-match: ^exec|unsafe$
+#         report: details
+#    - type: activity
+#      target:
+#        - - aws-s3
+#          - aws-access-key-id: AKIA5AHBL
+#            aws-secret-access-key: FUClxUubjsxGbK
+#            aws-bucket: my-kaudit-activity
+#            aws-region: us-west-2
+#            aws-resource-key-prefix: testing
+#            aws-content-type: csv
+#            aws-compression: gzip
+#            rate-limit: 100
+#      data-filter: {}
