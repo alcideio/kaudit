@@ -50,7 +50,13 @@ spec:
           name: kaudit-policy-{{ .Values.clusterName }}
           items:
             - key: audit-policy
-              path: audit-policy.yaml      
+              path: audit-policy.yaml
+      - name: integration-volume
+        configMap:
+          name: kaudit-integrations-{{ .Values.clusterName }}
+          items:
+            - key: audit-integration
+              path: audit-integration.yaml                    
       - name: keystore-volume
         emptyDir: {}      
       - name: key-volume
@@ -172,6 +178,8 @@ spec:
           mountPath: /config
         - name: policy-volume
           mountPath: /kaudit/policy
+        - name: integration-volume
+          mountPath: /kaudit/integration          
         - name: data-volume
           mountPath: /data
         ports:

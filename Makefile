@@ -8,7 +8,7 @@ VERSION ?= 1.0.0
 
 
 create-kind-cluster:  ##@Test KIND
-	kind create cluster --config hack/kind-config.yaml --image kindest/node:v1.16.4 --name kaudit-v1.16
+	kind create cluster --config hack/kind-config.yaml --image kindest/node:v1.16.9 --name kaudit-v1.16
 
 create-minikube-cluster: ##@Test Minikube
 	minikube start --memory=6g --cpus=4 \

@@ -79,25 +79,25 @@
 #   - {field: subresource, match-op: =, match-value: exec}
 
 
-- id: user/pod-creation
+- id: 1
   name: pod creation
   conditions:
     - {field: verb, match-op: =, match-value: create}
     - {field: resource-type, match-op: =, match-value: pods}
     - {field: subresource, match-op: =, match-value: ''}
-- id: user/pod-execution
+- id: 2
   name: pod execution
   conditions:
     - {field: resource-type, match-op: =, match-value: pods}
     - {field: subresource, match-op: =, match-value: exec}
-- id: user/namespace-create
+- id: 3
   name: namespace created
   status: true
   combine-op: and
   conditions:
     - {field: verb, match-op: =, match-value: create}
     - {field: resource-type, match-op: =, match-value: namespace}
-- id: user/do-not-deploy-to-default-namespace
+- id: 4
   name: resource created in the default namespace
   status: true
   combine-op: and
