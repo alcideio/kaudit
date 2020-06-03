@@ -1,0 +1,197 @@
+{
+  "AWSTemplateFormatVersion":"2010-09-09",
+  "Description": "Alcide Aduit analyzer, logs destination and kinesis-stream, and roles",
+  "Parameters":{
+    "SourceAccount":{
+      "Type":"String",
+      "Default":"",
+      "Description":"Source application account number"
+    },
+    "ApplicationOwner":{
+      "Type":"String",
+      "Default":"",
+      "Description":"application owner"
+    },
+    "ApplicationComponent":{
+      "Type":"String",
+      "Default":"audit-analyzer",
+      "Description":"application component"
+    },
+    "RetentionTime":{
+      "Type":"Number",
+      "Default":24,
+      "Description":"Kinesis stream logs retention time"
+    },
+    "ShardsNumber":{
+      "Type":"Number",
+      "Default":1,
+      "Description":"Kinesis stream Number of shards. Note: shard = Write: 1 MB per second, 1000 Records per second, Read 2 MB per second."
+    }
+  },
+
+  "Resources":{
+    "MyStream": {
+      "Type": "AWS::Kinesis::Stream",
+      "Properties": {
+        "Name": {"Fn::Join" : [ "", [{ "Ref" : "AWS::StackName" },"-Stream"] ]},
+        "RetentionPeriodHours" : { "Ref" : "RetentionTime"},
+        "ShardCount": { "Ref" : "ShardsNumber"},
+        "Tags": [
+          {
+            "Key": "Alcide",
+            "Value": { "Ref" : "ApplicationComponent"}
+          },
+          {
+            "Key": "owner",
+            "Value": { "Ref" : "ApplicationOwner" }
+          }
+       ]
+      }
+    },
+
+    "LogsRole" : {
+      "Type"  : "AWS::IAM::Role",
+      "Properties" : {
+          "AssumeRolePolicyDocument" : {
+              "Statement" : [ {
+                  "Effect" : "Allow",
+                  "Principal" : {
+                      "Service" : [ {"Fn::Join": [ "", [ "logs.", { "Ref": "AWS::Region" }, ".amazonaws.com" ] ]} ]
+                  },
+                  "Action" : [ "sts:AssumeRole" ]
+              } ]
+          },
+          "Tags": [
+            {
+              "Key": "Alcide",
+              "Value": { "Ref" : "ApplicationComponent"}
+            },
+            {
+              "Key": "owner",
+              "Value": { "Ref" : "ApplicationOwner" }
+            }
+         ],
+          "Path" : "/service-role/"
+      }
+    },
+
+    "LogsRolePolicy" : {
+        "Type" : "AWS::IAM::Policy",
+        "Properties" : {
+            "PolicyName" : {"Fn::Join" : [ "", [{ "Ref" : "AWS::StackName" },"-LogPolicy"] ]},
+            "PolicyDocument" : {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": ["kinesis:PutRecord"],
+                  "Resource": [{ "Fn::GetAtt" : ["MyStream", "Arn"] }]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": ["iam:PassRole"],
+                  "Resource": [{ "Fn::GetAtt" : ["LogsRole", "Arn"] }]
+                }
+              ]
+            },
+            "Roles" : [ { "Ref" : "LogsRole" } ]
+        }
+    },
+
+    "LogDestination" : {
+      "Type" : "AWS::Logs::Destination",
+      "DependsOn" : ["LogsRolePolicy"],
+      "Properties" : {
+        "DestinationName": {"Fn::Join" : [ "", [{ "Ref" : "AWS::StackName" },"-Destination"] ]},
+        "RoleArn": { "Fn::GetAtt" : ["LogsRole", "Arn"] },
+        "TargetArn": { "Fn::GetAtt" : ["MyStream", "Arn"] },
+        "DestinationPolicy": { "Fn::Join" : ["",[
+				"{\"Version\" : \"2012-10-17\",\"Statement\" : [{\"Effect\" : \"Allow\",",
+                " \"Principal\" : {\"AWS\" : \"", {"Ref":"SourceAccount"} ,"\"},",
+                "\"Action\" : \"logs:PutSubscriptionFilter\",",
+                " \"Resource\" : \"",
+                {"Fn::Join": [ "", [ "arn:aws:logs:", { "Ref": "AWS::Region" }, ":" ,{ "Ref": "AWS::AccountId" }, ":destination:",{ "Ref" : "AWS::StackName" },"-Destination" ] ]}  ,"\"}]}"
+        			]]
+            }
+      }
+    },
+
+    "kAuditUser" : {
+      "Type"  : "AWS::IAM::User",
+      "Properties" : {
+          "Tags": [
+            {
+              "Key": "Alcide",
+              "Value": { "Ref" : "ApplicationComponent"}
+            },
+            {
+              "Key": "owner",
+              "Value": { "Ref" : "ApplicationOwner" }
+            }
+         ],
+          "Path" : "/service-role/"
+      }
+    },
+
+    "kAuditUserPolicy" : {
+        "Type" : "AWS::IAM::Policy",
+        "Properties" : {
+            "PolicyName" : {"Fn::Join" : [ "", [{ "Ref" : "AWS::StackName" },"-kAuditUserPolicy"] ]},
+            "PolicyDocument" : {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [ "kinesis:GetRecords", "kinesis:GetShardIterator" ],
+                  "Resource": [{ "Fn::GetAtt" : ["MyStream", "Arn"] }]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": ["iam:PassRole"],
+                  "Resource": [{ "Fn::GetAtt" : ["kAuditUser", "Arn"] }]
+                }
+              ]
+            },
+            "Users" : [ { "Ref" : "kAuditUser" } ]
+        }
+    },
+
+      "kAuditUserKey" : {
+         "Type" : "AWS::IAM::AccessKey",
+         "Properties" : {
+           "UserName" : { "Ref": "kAuditUser" }
+         }
+      }
+
+  },
+
+  "Outputs":{
+
+   "Destination" : {
+      "Description": "Logs Destination ARN",
+      "Value": {"Fn::Join": [ "", [ "arn:aws:logs:", { "Ref": "AWS::Region" }, ":" ,{ "Ref": "AWS::AccountId" }, ":destination:",{ "Ref" : "AWS::StackName" },"-Destination" ] ]},
+      "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-Destination" }}
+    },
+    "StreamName" : {
+       "Description": "Kinesis Stream name",
+       "Value": { "Ref": "MyStream" },
+       "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-Stream" }}
+     },
+    "kAuditUser" : {
+       "Description": "IAM User with read permissions to the Kinesis Stream",
+       "Value": { "Ref": "kAuditUser" },
+       "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-kAuditUser" }}
+     },
+     "kAuditUserKeyID" : {
+        "Description": "Api key id for kAudit user",
+        "Value": { "Ref": "kAuditUserKey" },
+        "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-kAuditUserKeyID" }}
+      },
+      "kAuditUserKeySecret" : {
+         "Description": "Api key Secret for kAudit user",
+         "Value": { "Fn::GetAtt": ["kAuditUserKey", "SecretAccessKey"] },
+         "Export" : { "Name" : {"Fn::Sub": "${AWS::StackName}-kAuditUserKeySecret" }}
+       }
+
+  }
+}

@@ -1,0 +1,2 @@
+kubectl delete auditsink alcide-kaudit-sink -n alcide-kaudit
+kubectl delete service kaudit -n alcide-kaudit & kubectl delete statefulset kaudit -n alcide-kaudit & kubectl delete pvc data-volume-claim-kaudit -n alcide-kaudit & kubectl delete serviceaccount alcide-k8s-kaudit -n alcide-kaudit & kubectl delete secret kaudit -n alcide-kaudit & kubectl delete configmap kaudit -n alcide-kaudit

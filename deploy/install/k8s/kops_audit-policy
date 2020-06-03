@@ -1,0 +1,18 @@
+spec:
+  fileAssets:
+  — name: kaudit-audit-policy
+    path: /etc/kubernetes/audit-policy-kubeconfig.yaml
+    # which type of instances to appy the file
+    roles: [Master]
+    content: |
+      <audit policy here>
+  — name: kaudit-audit-webhook
+    path: /etc/kubernetes/audit-webhook-kubeconfig.yaml
+    # which type of instances to appy the file
+    roles: [Master]
+    content: |
+      <audit webhook here>
+
+  kubeAPIServer:
+   auditPolicyFile: /etc/kubernetes/audit-policy-kubeconfig.yaml
+   auditWebhookConfigFile: /etc/kubernetes/audit-webhook-kubeconfig.yaml

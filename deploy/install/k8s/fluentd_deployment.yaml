@@ -1,0 +1,229 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: k8s-log-pipeline
+spec:
+  selector:
+    app: k8s-log-pipeline
+  ports:
+    - protocol: TCP
+      port: 8888
+      targetPort: 8888
+      name: input
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: k8s-log-pipeline-input-tls-secret
+  labels:
+    app: k8s-log-pipeline
+type: Opaque
+stringData:
+  cert: |-
+    incert
+  priv-key: |-
+    inprivkey
+  priv-key-password: |-
+    inprivkeypassword
+  ca: |-
+    inca
+  ca-password: |-
+    incapassword
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: k8s-log-pipeline-output-tls-secret
+  labels:
+    app: k8s-log-pipeline
+type: Opaque
+#stringData:
+#  cert: |-
+#    outcert
+#  priv-key: |-
+#    outprivkey
+#  priv-key-password: |-
+#    outprivkeypassword
+#  ca: |-
+#    outca
+#  ca-password: |-
+#    outcapassword
+data:
+  cert: ""
+  priv-key: ""
+  priv-key-password: ""
+  ca: ""                              # the CA of the output endpoint (kAudit)  (base64 encoded)
+  ca-password: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8s-log-pipeline-config-kaudit
+  labels:
+    app: k8s-log-pipeline
+data:
+  kaudit-webhook: https://kaudit.alcide-kaudit.svc:443/auditsink # kaudit webhook to send to
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: k8s-log-pipeline-config
+  labels:
+    app: k8s-log-pipeline
+data:
+  fluentd: |
+    # Connecting to k8s api server using a WebHook:
+    <source>
+      @type http
+      # the port exposed by the fluentd pod
+      port 8888
+      # TODO, figure out a way to use kubeconfig file to authenticate to logstash
+
+      # possible options:
+      #bind 0.0.0.0
+      #body_size_limit 32m
+      #keepalive_timeout 10s
+
+      #<transport tls>
+        # TLS configuration, see: https://docs.fluentd.org/plugin-helper-overview/api-plugin-helper-server#configuration-example
+        # cert_path, private_key_path should match the k8s WebHook Configuration (kubeconfig) below:
+        #    client-certificate: /path/to/cert.pem
+        #    client-key: /path/to/key.pem
+        #cert_path /etc/secrets/input/in.crt
+        #private_key_path /etc/secrets/input/in_priv_key
+        #private_key_passphrase "#{ENV["TLS_IN_PRIVATE_KEY_PASSPHRASE"]}"
+
+        # For Cert signed by public CA
+        #ca_path /etc/secrets/input/in_ca.crt
+        #cert_path /etc/secrets/input/in.crt
+        #private_key_path /etc/secrets/input/in_priv_key
+        #private_key_passphrase "#{ENV["TLS_IN_PRIVATE_KEY_PASSPHRASE"]}"
+        #client_cert_auth false
+
+        # For Cert generated and signed by private CA Certificate
+        #ca_cert_path /etc/secrets/input/ca_cert_file
+        #ca_private_key_path /etc/secrets/input/ca_priv_key_file
+        #ca_private_key_passphrase "#{ENV["TLS_IN_CA_PRIVATE_KEY_PASSPHRASE"]}"
+      #</transport>
+
+      <parse>
+      @type none
+      </parse>
+    </source>
+
+    # match the tag set by the source, so whatever comes to: http://<fluentd-service>/audit:8888
+    <match audit>
+      @type http
+      # kAudit URL, from its service name & port and /auditsink suffix
+      endpoint "#{ENV['KAUDIT_WEBHOOK']}"
+      # method post or put, post is default
+      #https_method post
+      content_type application/json
+      <format>
+      @type single_value
+      </format>
+
+      # TLS configuration
+      # CA certificate
+      tls_ca_cert_path /etc/secrets/output/out_ca.crt
+      # client certificate
+      #tls_client_cert_path /etc/secrets/output/out.crt
+      # private key certificate
+      #tls_private_key_path /etc/secrets/output/priv_key
+      # private key passphrase
+      #tls_private_key_passphrase "#{ENV["TLS_OUT_PRIVATE_KEY_PASSPHRASE"]}"
+      # TLS verify mode, peer or none, defult is peer
+      #tls_verify_mode
+    </match>
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: k8s-log-pipeline
+spec:
+  selector:
+    matchLabels:
+      app: k8s-log-pipeline
+  template:
+    metadata:
+      labels:
+        app: k8s-log-pipeline
+    spec:
+      hostname: k8s-log-pipeline
+      volumes:
+        - name: k8s-log-pipeline-config
+          configMap:
+            name: k8s-log-pipeline-config
+            items:
+              - key: fluentd
+                path: fluent.conf
+        - name: k8s-log-pipeline-input-tls-volume
+          secret:
+            secretName: k8s-log-pipeline-input-tls-secret
+            items:
+              - key: cert
+                path: in.crt
+              - key: priv-key
+                path: in_priv_key
+              - key: ca
+                path: in_ca.crt
+        - name: k8s-log-pipeline-output-tls-volume
+          secret:
+            secretName: k8s-log-pipeline-output-tls-secret
+            items:
+              - key: cert
+                path: out.crt
+              - key: priv-key
+                path: out_priv_key
+              - key: ca
+                path: out_ca.crt
+      containers:
+        - name: k8s-log-pipeline
+          image: fluent/fluentd:v1.7-1
+          volumeMounts:
+            - name: k8s-log-pipeline-config
+              mountPath: /etc/fluent
+            - name: k8s-log-pipeline-input-tls-volume
+              mountPath: /etc/secrets/input
+            - name: k8s-log-pipeline-output-tls-volume
+              mountPath: /etc/secrets/output
+          ports:
+            - containerPort: 8888
+              name: input
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - all
+          env:
+            - name: KAUDIT_WEBHOOK
+              valueFrom:
+                configMapKeyRef:
+                  name: k8s-log-pipeline-config-kaudit
+                  key: kaudit-webhook
+            - name: TLS_IN_PRIVATE_KEY_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: k8s-log-pipeline-input-tls-secret
+                  key: priv-key-password
+            - name: TLS_IN_CA_PRIVATE_KEY_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: k8s-log-pipeline-input-tls-secret
+                  key: ca-password
+            - name: TLS_OUT_PRIVATE_KEY_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: k8s-log-pipeline-output-tls-secret
+                  key: priv-key-password
+            - name: TLS_OUT_CA_PRIVATE_KEY_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: k8s-log-pipeline-output-tls-secret
+                  key: ca-password
+          command:
+            - fluentd
+---

@@ -1,0 +1,25 @@
+--- # Audit Sink for k8s (non-GKE); CA Bundle is base-64 encoding of server cert
+apiVersion: auditregistration.k8s.io/v1alpha1
+kind: AuditSink
+metadata:
+  name: alcide-kaudit-sink
+  labels:
+    app: kaudit
+spec:
+  policy:
+    level: Metadata
+    stages:
+      - ResponseComplete
+  webhook:
+    throttle:
+      qps: 40
+      burst: 60
+    clientConfig:
+      service:
+        name: kaudit
+        namespace: alcide-kaudit
+        path: "/auditsink"
+        port: 443
+      # base-64 formatted certificate for service domain name (SAN=dns:kaudit.alcide.svc)
+      caBundle:
+
