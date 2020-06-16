@@ -34,8 +34,6 @@
 #    - ref/aws-secret-access-key: val-x
 # And the sensitive value 'my-access-key' is injected into 'aws-secret-access-key' with a configuration like this:
 #- val-x: my-access-key
-
-
 #    - type: detections
 #      target:
 #        target-type: slack
