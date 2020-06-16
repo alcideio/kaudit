@@ -1,12 +1,13 @@
 # Audit policy syntax:
 # A policy is defined in Yaml syntax. A policy is composed of rules. Each rule the following syntax:
-# id: unique ID of rule. Can be used to reference the rule by other rules. Format: id-namespace/id-key. 'system' id-namespace is reserved.
-# name: meaningful rule name, presented to user on event match
-# documentation: rule documentation string
+# id: unique ID of rule. Can be used to reference the rule by other rules. Format: positive integer.
+# name: meaningful rule name, presented to user on event match. Should be unique.
+# documentation: optional, rule documentation string.
+# namespace: optional, name of rules group. 'system' is reserved.
 # status: true/false (default: true), indicates if matches should be reported
 # combine-op: and/or (default: and), the logical operator to combine conditions values
 # conditions: one or more logical conditions to match audit entries
-#   a reference condition: has the logical value of another rule, whose id is the same as the ref-id
+#   a reference condition: has the logical value of another rule, whose id is the same as the ref-id. For example: {ref-id: 1}
 #   a logical condition: matches an audit entry's field to the match-value using a match operator
 #   field: audit entry field name:
 #      principal
@@ -63,13 +64,13 @@
 #   match-value: value used in match operation. Empty value with = match-op can be used to match event who doesn't have the field.
 #
 # Example:
-#- id: user/r1573041380038-21535
+#- id: 1
 #  name: pod execution in production namespaces
 #  description: execution of pods in namespaces whose name contains 'production'
 #  conditions:
-#   - {ref-id: user/pod-execution-rule}
+#   - {ref-id: 2}
 #   - {field: resource-namespace, match-op: ~, match-value: production}
-#- id: user/pod-execution-rule
+#- id: 2
 #  name: pod execution rule
 #  status: false
 #  combine-op: and
@@ -79,27 +80,32 @@
 #   - {field: subresource, match-op: =, match-value: exec}
 
 
-- id: 1
-  name: pod creation
+
+- id: 100001
+  name: "ops - pod creation"
+  documentation: rule added by ops team
+  status: false  
   conditions:
     - {field: verb, match-op: =, match-value: create}
     - {field: resource-type, match-op: =, match-value: pods}
     - {field: subresource, match-op: =, match-value: ''}
-- id: 2
-  name: pod execution
+- id: 100002
+  name: "sec - pod execution"
+  documentation: rule added by security team for compliance requirement
+  status: false   
   conditions:
     - {field: resource-type, match-op: =, match-value: pods}
     - {field: subresource, match-op: =, match-value: exec}
-- id: 3
-  name: namespace created
-  status: true
+- id: 100003
+  name: ops - namespace created
+  status: false
   combine-op: and
   conditions:
     - {field: verb, match-op: =, match-value: create}
     - {field: resource-type, match-op: =, match-value: namespace}
-- id: 4
-  name: resource created in the default namespace
-  status: true
+- id: 100004
+  name: ops - resource created in the default namespace
+  status: false
   combine-op: and
   conditions:
     - {field: verb, match-op: =, match-value: create}

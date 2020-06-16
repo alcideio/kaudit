@@ -27,7 +27,7 @@ kauditIntegrationsFile: integrations/audit-integration.yaml
 
 runOptions:
   # Pre Approve Eula
-  eulaSign: false
+  eulaSign: true
   #  Activate Audit log analysis 
   activateAnalysis: true
   #  Enable State API 
