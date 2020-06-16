@@ -67,12 +67,11 @@ fi
 # optional script parameters, can leave default values
 # EventHubs Namespace name
 EVENT_HUBS_NAMESPACE="kaudit-eh-${AKS_CLUSTER_NAME}"
-# EventHub name - using the default (i.e. same as the EventHubs NameSpace)
+# EventHub name
 EVENT_HUB="kaudit-eh-k8saudit-${AKS_CLUSTER_NAME}"
-#EventHubs Namespace Authorization Rule name: Using the default rule
-EVENT_HUBS_NAMESPACE_MANAGE_AUTH_RULE="RootManageSharedAccessKey"
-#EVENT_HUBS_NAMESPACE_MANAGE_AUTH_RULE="RootManageSharedAccessKey-${AKS_CLUSTER_NAME}"
-# EventHub Authorization Rule name
+# EventHub manage Authorization Rule name
+EVENT_HUBS_NAMESPACE_MANAGE_AUTH_RULE="k8s-audit-manage-${AKS_CLUSTER_NAME}"
+# EventHub listen Authorization Rule name
 EVENT_HUB_LISTEN_AUTH_RULE="k8s-audit-listen-${AKS_CLUSTER_NAME}"
 # Diagnostics Settings name
 DIAGNOSTICS_SETTINGS="k8s-audit-${AKS_CLUSTER_NAME}"
@@ -96,13 +95,14 @@ az eventhubs eventhub create \
    --message-retention 1 \
    --partition-count 2
 
-# 3. Create Authorization Rule with Manage,Send,Listen rights on EventHubs Namespace
-# Using default EventHubs Namespace Authorization Rule
-# az eventhubs namespace authorization-rule create \
-#   -n ${EVENT_HUBS_NAMESPACE_MANAGE_AUTH_RULE} \
-#   --namespace-name ${EVENT_HUBS_NAMESPACE} \
-#   -g ${RESOURCE_GROUP} \
-#   --rights Manage Send Listen
+# 3. Create Authorization Rule with Manage,Send,Listen rights on EventHub Namespace
+MANAGE_RULE_ID=$(az eventhubs namespace authorization-rule create \
+   -n ${EVENT_HUBS_NAMESPACE_MANAGE_AUTH_RULE} \
+   --namespace-name ${EVENT_HUBS_NAMESPACE} \
+   -g ${RESOURCE_GROUP} \
+   --rights Manage Send Listen \
+   --query id \
+   -o tsv)
 
 # 4. Create Authorization Rule with Listen rights on EventHub
 az eventhubs eventhub authorization-rule create \
@@ -112,27 +112,29 @@ az eventhubs eventhub authorization-rule create \
    -g ${RESOURCE_GROUP} \
    --rights Listen
 
-# 4. Send k8s audit log from the AKS cluster, using the configured Authorization Rule, to created EventHub
+# 5. Send k8s audit log from the AKS cluster, using the configured Authorization Rule, to created EventHub
 az monitor diagnostic-settings create \
    -n ${DIAGNOSTICS_SETTINGS} \
    --resource ${AKS_CLUSTER_NAME} \
    --resource-type microsoft.containerservice/managedclusters \
    -g ${RESOURCE_GROUP} \
-   --event-hub ${EVENT_HUBS_NAMESPACE} \
-   --event-hub-rule ${EVENT_HUBS_NAMESPACE_MANAGE_AUTH_RULE} \
+   --event-hub ${EVENT_HUB} \
+   --event-hub-rule ${MANAGE_RULE_ID} \
    --logs "[ { \"category\": \"kube-audit\", \"enabled\": true } ]"
 
 # 6. Get credential keys for EventHub
 
-echo Parameters for kAudit setup:
+echo Parameters for kAudit setup
 echo ---------------------------
 echo "EventHub name: ${EVENT_HUB}"
-echo EventHub credentials:
+echo "EventHub connection string:"
 az eventhubs eventhub authorization-rule keys list \
    -n ${EVENT_HUB_LISTEN_AUTH_RULE} \
    -g ${RESOURCE_GROUP} \
    --namespace-name ${EVENT_HUBS_NAMESPACE} \
-   --eventhub-name ${EVENT_HUB}
+   --eventhub-name ${EVENT_HUB} \
+   --query primaryConnectionString \
+   -o tsv
 
 echo "AKS Audit Log Setup for Alcide kAudit complete!"
 echo "Please follow Alcide kAudit installation guide to verify the AKS setup and integrate with kAudit."

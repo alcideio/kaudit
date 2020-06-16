@@ -180,7 +180,7 @@ data:
 # The configuration of each integration type has 3 sections:
 # - type (required): the integration type
 # - target (required): one or more destinations (endpoints) for sending matched data.
-#   Supported targets include: Slack, HTTP-API, Syslog, Kafka topic, Azure Sentinel & Azure Monitor, AWS S3
+#   Supported targets include: Slack, HTTP-API, Syslog, Kafka topic, Azure Sentinel & Azure Monitor, AWS Security-Hub, AWS S3
 #   Each kind of target requires specific configuration, e.g. credentials or target address.
 #   Data is not sent to stopped targets.
 # - data-filter (optional): a filter determining which processed results to send to the target(s).
@@ -223,58 +223,76 @@ data:
   audit-integration: |
 #    - type: detections
 #      target:
-#        - - slack
-#          - slack-uri: 'https://hooks.slack.com/services/xYz'
-#            rate-limit: 10
-#        - - azure
-#          - workspace-id: my-azure-analytics-workspace
-#            shared-key: my-asuzre-shared-key
-#            stopped: true
-#        - - http-api
-#          - http-api-uri: 'https://my-azure-analytics-workspace'
-#            http-api-token-header: x-token
-#            http-api-token: 'x123456789'
-#            stopped: true
-#        - - kafka
-#          - kafka-broker: my-kafka-broker
-#            kafka-topic: my-topic
-#            stopped: true
-#      data-filter:
-#        etype:
+#        target-type: slack
+#        slack-uri: 'https://hooks.slack.com/services/xYz'
+#        rate-limit: 10
+#      data-filter:                     # filter on sent results
+#        etype:                         # entity type
 #          - principal
 #          - resource
 #          - cluster
-#        category:
-#          - alcide.category/incident
-#          - alcide.category/anomaly
-#        confidence:
-#          - high
-#          - medium
+#        category:                      # detection category
+#          - incident
+#          - anomaly
+#        confidence:                    # detection confidence
+#          - 0                          # high
+#          - 1                          # medium
+#          - 2                          # low
 #        entity-no-match: ^system:|^admin$|^cluster-autoscaler$|^10\\.(1|2)?\\d{1,2}\\.(1|2)?\\d{1,2}\\.(1|2)?\\d{1,2}$$
+#    - type: detections
+#      target:
+#        target-type: azure
+#        workspace-id: my-azure-analytics-workspace
+#        shared-key: my-asuzre-shared-key
+#        stopped: true
+#    - type: detections
+#      target:
+#        target-type: aws-security-hub
+#        aws-region: us-west-2
+#        aws-account-id: "111111111111"
+#    - type: detections
+#      target:
+#        target-type: http-api
+#        http-api-uri: 'https://my-azure-analytics-workspace'
+#        http-api-token-header: x-token
+#        http-api-token: 'x123456789'
+#        stopped: true
+#    - type: detections
+#      target:
+#        target-type: kafka
+#        kafka-broker: my-kafka-broker
+#        kafka-topic: my-topic
+#        stopped: true
 #    - type: selections
 #      target:
-#        - - http-api
-#          - http-api-uri: 'https://my-api-target.com/api/xYz'
-#            rate-limit: 10
-#        - - syslog
-#          - syslog-host: my-syslog
-#            syslog-port: 5555
-#            syslog-tcp: false
+#        target-type: http-api
+#        http-api-uri: 'https://my-api-target.com/api/xYz'
+#        rate-limit: 10
 #      data-filter:
-#         entity-no-match: ^system:|^admin$
-#         rules-match: ^exec|unsafe$
-#         report: details
+#        entity-no-match: ^system:|^admin$
+#        rules-match: ^exec|unsafe$
+#        report: details
+#    - type: selections
+#      target:
+#        target-type: syslog
+#        syslog-host: my-syslog
+#        syslog-port: 5555
+#        syslog-tcp: false
+#      data-filter:
+#        entity-no-match: ^system:|^admin$
+#        rules-match: ^exec|unsafe$
+#        report: count
 #    - type: activity
 #      target:
-#        - - aws-s3
-#          - aws-access-key-id: AKIA5AHBL
-#            aws-secret-access-key: FUClxUubjsxGbK
-#            aws-bucket: my-kaudit-activity
-#            aws-region: us-west-2
-#            aws-resource-key-prefix: testing
-#            aws-content-type: csv
-#            aws-compression: gzip
-#            rate-limit: 100
+#        target-type: aws-s3
+#        aws-access-key-id: AKIA5AHBL
+#        aws-secret-access-key: FUClxUubjsxGbK
+#        aws-bucket: my-kaudit-activity
+#        aws-region: us-west-2
+#        aws-resource-key-prefix: testing
+#        aws-content-type: csv
+#        aws-compression: gzip
+#        rate-limit: 100
 #      data-filter: {}
 
 ---
