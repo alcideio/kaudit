@@ -2,6 +2,7 @@ namespace: alcide-kaudit
 clusterName: mycluster
 image:
   kaudit: "gcr.io/dcvisor-162009/alcide/dcvisor/kaudit:latest"
+  pemConverter: "gcr.io/dcvisor-162009/alcide/dcvisor/pem-keystore-converter:DCV-2.14.0"
   pullPolicy: Always #Always for :latest or no tag, IfNotPresent for other tags
   pullSecretToken: GetYourTokenFromAlcide
 

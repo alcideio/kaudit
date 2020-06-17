@@ -134,7 +134,7 @@ spec:
             name: vault-token   
 {{- end }}
       - name: convert-pem-to-keystore
-        image: gcr.io/dcvisor-162009/alcide/dcvisor/pem-keystore-converter:DCV-2.11.2
+        image: {{ .Values.image.pemConverter }}
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: convertkey-volume
