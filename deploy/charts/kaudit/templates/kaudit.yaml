@@ -133,8 +133,9 @@ spec:
             name: vault-token   
 {{- end }}
       - name: convert-pem-to-keystore
-        image: {{ .Values.image.pemConverter }}
+        image: {{ .Values.image.kaudit }}
         imagePullPolicy: IfNotPresent
+        command: ["/convert.sh"]
         volumeMounts:
         - name: convertkey-volume
           mountPath: /convert.sh
