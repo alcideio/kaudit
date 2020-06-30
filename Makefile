@@ -7,8 +7,11 @@ VERSION ?= 1.0.0
 .phony: help tutorials
 
 
-create-kind-cluster:  ##@Test KIND
+create-kind-cluster:  ##@Test create KIND cluster
 	kind create cluster --config hack/kind-config.yaml --image kindest/node:v1.16.9 --name kaudit-v1.16
+
+delete-kind-cluster:  ##@Test delete KIND cluster
+	kind delete cluster --name kaudit-v1.16
 
 create-minikube-cluster: ##@Test Minikube
 	minikube start --memory=6g --cpus=4 \

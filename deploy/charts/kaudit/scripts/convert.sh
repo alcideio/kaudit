@@ -8,7 +8,8 @@ echo Copying PEM files to $DSTDIR
 cp $SRCDIR/*.pem $DSTDIR/
 
 echo use the jre default cacerts as the base for truststore.jks
-cp -f $JAVA_HOME/jre/lib/security/cacerts $DSTDIR/truststore.jks
+cp -f $JAVA_HOME/lib/security/cacerts $DSTDIR/truststore.jks
+chmod +w $DSTDIR/truststore.jks
 keytool -storepasswd -storepass changeit -new abcdef -keystore $DSTDIR/truststore.jks
 
 echo Importing ca.pem into $DSTDIR/truststore.jks
