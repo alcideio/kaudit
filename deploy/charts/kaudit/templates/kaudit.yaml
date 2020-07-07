@@ -99,11 +99,18 @@ spec:
       # Pod Security
       serviceAccountName: alcide-k8s-kaudit-{{ .Values.clusterName }}      
       securityContext:
+{{- if eq .Values.k8s.openshift "true" }}
+        # for openshift use be in the ranges: [1000590000, 1000599999]
+        runAsNonRoot: true
+        runAsUser: 1000590000
+        runAsGroup: 1000590000
+        fsGroup: 1000590000
+{{- else }}
         runAsNonRoot: true
         runAsUser: 10001
         runAsGroup: 10001
         fsGroup: 10001
-    
+{{- end }}
 
       initContainers:
 {{- if eq .Values.vault.mode "vault" }}
@@ -118,14 +125,19 @@ spec:
           - name: VAULT_AGENT_ADDR
             value: http://localhost:8100
         image: {{.Values.vault.image }}
-        imagePullPolicy: IfNotPresent  
-        securityContext:   
-            allowPrivilegeEscalation: false  
-            capabilities:
-              add:
-                - NET_BIND_SERVICE
-              drop:
-                - ALL                             
+        imagePullPolicy: IfNotPresent
+{{- if eq .Values.k8s.openshift "true" }}
+# for openshift no need to configure security context
+{{- else }}
+# when running with native k8s these are needed
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+              - NET_BIND_SERVICE
+            drop:
+              - ALL
+{{- end }}
         volumeMounts:            
           - mountPath: /etc/vault
             name: vault-agent-config
@@ -144,23 +156,23 @@ spec:
           mountPath: /input
         - name: keystore-volume
           mountPath: /output       
-        # Container Security            
-        securityContext:
-            allowPrivilegeEscalation: false     
-            capabilities:
-                drop:
-                - ALL          
+        # Container Security
       containers:
       - name: kaudit
         image: {{ .Values.image.kaudit }}
-        imagePullPolicy: {{ .Values.image.pullPolicy }}   
-        securityContext:     
-            allowPrivilegeEscalation: false
-            capabilities:
-                add:
-                - NET_BIND_SERVICE
-                drop:
-                - ALL
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if eq .Values.k8s.openshift "true" }}
+        # for openshift no need to configure security context
+        {{- else }}
+        # when running with native k8s these are needed
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            add:
+              - NET_BIND_SERVICE
+            drop:
+              - ALL
+        {{- end }}
         volumeMounts:
 {{- if eq .Values.vault.mode "vault" }}        
         - mountPath: /vault
