@@ -83,7 +83,7 @@ aws:
 
 k8s:
   # webhook or auditsink
-  mode: "auditsink" 
+  mode: "auditsink"
 
 alcide:
   token:
