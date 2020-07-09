@@ -100,9 +100,9 @@ spec:
       serviceAccountName: alcide-k8s-kaudit-{{ .Values.clusterName }}      
       securityContext:
         runAsNonRoot: true
-        runAsUser: 10001
-        runAsGroup: 10001
-        fsGroup: 10001
+        runAsUser: 1000590000
+        runAsGroup: 1000590000
+        fsGroup: 1000590000
     
 
       initContainers:
@@ -122,8 +122,6 @@ spec:
         securityContext:   
             allowPrivilegeEscalation: false  
             capabilities:
-              add:
-                - NET_BIND_SERVICE
               drop:
                 - ALL                             
         volumeMounts:            
@@ -157,8 +155,6 @@ spec:
         securityContext:     
             allowPrivilegeEscalation: false
             capabilities:
-                add:
-                - NET_BIND_SERVICE
                 drop:
                 - ALL
         volumeMounts:
