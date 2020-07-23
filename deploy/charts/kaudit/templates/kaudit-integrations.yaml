@@ -9,4 +9,20 @@ metadata:
 data:
   audit-integration: |
 {{ .Files.Get .Values.kauditIntegrationsFile  | indent 4 -}}
-
+---
+apiVersion: "logging.openshift.io/v1alpha1"
+kind: "LogForwarding"
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  disableDefaultForwarding: true
+  outputs:
+   - name: fluentd-forward
+     type: "forward"
+     endpoint: fluentd-kaudit.{{ .Values.namespace }}.svc:24225
+  pipelines:
+   - name: audit-logs
+     inputSource: logs.audit
+     outputRefs:
+     - fluentd-forward
