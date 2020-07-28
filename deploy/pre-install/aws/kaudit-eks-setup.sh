@@ -18,6 +18,11 @@ KINESIS_ACCOUNT_ID="${CLOUDWATCH_ACCOUNT_ID}"
 
 echo "EKS Audit Log Setup for Alcide kAudit"
 
+if [[ $# -eq 0 && $REGION == "" && $CLUSTER_NAME == "" && $CLOUDWATCH_ACCOUNT_ID == "" ]]; then
+  echo "Command line options: -a <CloudWatch (sending) account-id> -k <Kinesis (receiving) account-id, defaults to CloudWatch account> -c <EKS-cluster name> -r <region>"
+  exit 0
+fi
+
 # Given command line args - parse them:
 if (($# != 0)); then
   while getopts ":a:k:c:r:h" opt; do
@@ -35,7 +40,7 @@ if (($# != 0)); then
         REGION="${OPTARG}"
         ;;
       h)
-        echo "Command line options: -a <CloudWatch (sending) account-id> -k <Kinesis (receiving) account-id> -c <EKS-cluster-name> -r <region>"
+        echo "Command line options: -a <CloudWatch (sending) account-id> -k <Kinesis (receiving) account-id, defaults to CloudWatch account> -c <EKS-cluster name> -r <region>"
         exit 0
         ;;
       \?)
@@ -48,6 +53,24 @@ if (($# != 0)); then
         ;;
     esac
   done
+fi
+
+# 0. validate user-provided parameters
+if [ -z ${CLOUDWATCH_ACCOUNT_ID} ]; then
+  echo CloudWatch account ID is not configured
+  exit
+fi
+if [ -z ${REGION} ]; then
+  echo Region is not configured
+  exit
+fi
+if [ -z ${CLUSTER_NAME} ]; then
+  echo EKS cluster name is not configured
+  exit
+fi
+if [ -z ${KINESIS_ACCOUNT_ID} ]; then
+  echo Kinesis account ID is the same as CloudWatch account ID
+  KINESIS_ACCOUNT_ID="${CLOUDWATCH_ACCOUNT_ID}"
 fi
 
 # optional script parameters, can leave default values
@@ -78,20 +101,6 @@ LOG_GROUP_NAME="/aws/eks/$CLUSTER_NAME/cluster"
 FILTER_PATTERN=""
 
 echo "Preparing Kinesis Stream ${STREAM_NAME} at account ${KINESIS_ACCOUNT_ID} for EKS cluster ${CLUSTER_NAME} in region ${REGION} and account ${CLOUDWATCH_ACCOUNT_ID}"
-
-# 0. validate user-provided parameters
-if [ -z ${CLOUDWATCH_ACCOUNT_ID} ]; then
-  echo CloudWatch account ID is not configured
-  exit
-fi
-if [ -z ${REGION} ]; then
-  echo Region is not configured
-  exit
-fi
-if [ -z ${CLUSTER_NAME} ]; then
-  echo EKS cluster name is not configured
-  exit
-fi
 
 # 1. enable cluster's audit log
 echo enable audit logging of EKS cluster: ${CLUSTER_NAME} region ${REGION}
@@ -298,7 +307,6 @@ aws iam \
 # 9. create uninstall script
 
 echo "#!/bin/bash
-KAUDIT_ACCESS_KEY_ID=\"\"
 aws eks \\
     --region ${REGION} \\
     update-cluster-config \\
@@ -328,15 +336,20 @@ aws iam \\
     delete-user-policy \\
     --user-name ${KAUDIT_USER_NAME} \\
     --policy-name ${PERMISSION_POLICY_FOR_KAUDIT_USER_NAME}
-if [ ! -z $\"KAUDIT_ACCESS_KEY_ID\" ]; then
+
+echo -n \"Access Key ID (that was generated for user ${KAUDIT_USER_NAME}) to delete: \"
+read KAUDIT_ACCESS_KEY_ID
+if [ -n \"\${KAUDIT_ACCESS_KEY_ID}\" ]; then
 aws iam \\
     delete-access-key \\
     --user-name ${KAUDIT_USER_NAME} \\
-    --access-key-id ${KAUDIT_ACCESS_KEY_ID}
-fi
+    --access-key-id \${KAUDIT_ACCESS_KEY_ID}
 aws iam \\
     delete-user \\
     --user-name ${KAUDIT_USER_NAME}
+else
+  echo \"Skipping deletion of access key and user\"
+fi
 " > "${UNINSTALL_SCRIPT_FILE}"
 
 echo Parameters for kAudit setup:

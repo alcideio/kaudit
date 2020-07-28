@@ -19,6 +19,12 @@ SET KINESIS_ACCOUNT_ID=
 
 echo EKS Audit Log Setup for Alcide kAudit
 
+set ARGSSET=%REGION%%CLUSTER_NAME%%CLOUDWATCH_ACCOUNT_ID%%1
+if "x%ARGSSET%"=="x" (
+  echo Command line options^: -CLOUDWATCH_ACCOUNT_ID=^<CloudWatch ^(sending^) account-id^> -KINESIS_ACCOUNT_ID=^<Kinesis ^(receiving^) account-id, defaults to CloudWatch account^> -CLUSTER_NAME=^<EKS-cluster name^> -REGION=^<region^>
+  goto EOF
+)
+
 REM Given command line args - parse them:
 :argsinitial
 if "%1"=="" goto argsdone
@@ -32,6 +38,27 @@ if "%aux:~0,1%"=="-" (
 shift
 goto argsinitial
 :argsdone
+
+REM 0. validate user-provided parameters
+if "x%CLOUDWATCH_ACCOUNT_ID%"=="x" (
+  echo CloudWatch account ID is not configured
+  goto EOF
+)
+
+if "x%REGION%"=="x" (
+  echo Region is not configured
+  goto EOF
+)
+
+if "x%CLUSTER_NAME%"=="x" (
+  echo EKS cluster name is not configured
+  goto EOF
+)
+
+if "x%KINESIS_ACCOUNT_ID%"=="x" (
+  echo Kinesis account ID is the same as CloudWatch account ID
+  SET KINESIS_ACCOUNT_ID=%CLOUDWATCH_ACCOUNT_ID%
+)
 
 REM optional script parameters, can leave default values
 REM name of Kinesis stream
@@ -58,22 +85,6 @@ REM Kinesis filter pattern
 SET FILTER_PATTERN=""
 
 echo Preparing Kinesis Stream %STREAM_NAME% at account %KINESIS_ACCOUNT_ID% for EKS cluster %CLUSTER_NAME% in region %REGION% and account %CLOUDWATCH_ACCOUNT_ID%
-
-REM 0. validate user-provided parameters
-if "x%CLOUDWATCH_ACCOUNT_ID%"=="x" (
-  echo CloudWatch account ID is not configured
-  goto EOF
-)
-
-if "x%REGION%"=="x" (
-  echo Region is not configured
-  goto EOF
-)
-
-if "x%CLUSTER_NAME%"=="x" (
-  echo EKS cluster name is not configured
-  goto EOF
-)
 
 REM 1. enable cluster audit log
 echo enable audit logging of EKS cluster: %CLUSTER_NAME% region %REGION%
