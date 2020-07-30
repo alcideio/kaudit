@@ -208,7 +208,7 @@ spec:
               key: token
 
         - name: JAVA_OPTS
-          value: -Xmx{{- .Values.resources.javaXmX }} -Djava.security.egd=file:/dev/urandom -Dclojure.spec.skip-macros=true -Dclojure.compiler.direct-linking=true {{ include "commonJavaFlags" . | indent 12 }}
+          value: -Xmx{{- .Values.resources.javaXmX }}  -XX:+UseG1GC -XX:+UseStringDeduplication -Djava.security.egd=file:/dev/urandom -Dclojure.spec.skip-macros=true -Dclojure.compiler.direct-linking=true {{ include "commonJavaFlags" . | indent 12 }}
         - name: CERT
           value: "/keystore/cert.pem"
         - name: PRIV_KEY
