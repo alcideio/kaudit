@@ -90,6 +90,8 @@ KAUDIT_USER_NAME="KAuditReadKinesis-${STREAM_NAME}"
 PERMISSION_POLICY_FOR_KAUDIT_USER_NAME="Permissions-Policy-For-${KAUDIT_USER_NAME}"
 # name uninstall script
 UNINSTALL_SCRIPT_FILE=~/kaudit-eks-uninstall-"${CLUSTER_NAME}".sh
+# name validation script
+VALIDATION_SCRIPT_FILE=~/kaudit-eks-validation-"${CLUSTER_NAME}".sh
 
 # Number of seconds to wait for AWS command results
 DELAY=10
@@ -162,8 +164,10 @@ for ((i=0; i<20; i++)); do
   result=$(aws kinesis \
       describe-stream \
       --region "${REGION}" \
-      --stream-name "${STREAM_NAME}")
-  if [[ "${result}" =~ \"StreamStatus\":\ +\"ACTIVE\" ]]; then
+      --stream-name "${STREAM_NAME}" \
+      --output text \
+      --query 'StreamDescription.StreamStatus')
+  if [[ "${result}" == "ACTIVE" ]]; then
     stream_status="active"
     break;
   fi
@@ -190,7 +194,7 @@ aws iam \
     create-role \
     --role-name ${SENDING_ROLE_NAME} \
     --assume-role-policy-document file://~/TrustPolicyForCWL.json
-CLOUDWATCH_ROLE_ARN="arn:aws:iam::${CLOUDWATCH_ACCOUNT_ID}:role/${SENDING_ROLE_NAME}"
+CLOUDWATCH_ROLE_ARN="arn:aws:iam::${KINESIS_ACCOUNT_ID}:role/${SENDING_ROLE_NAME}"
 
 # 4. create Policy for the Role that will be used for putting filtered records from CloudWatch (the cluster's audit entries) on the Kinesis Stream
 
@@ -202,11 +206,6 @@ echo "{
       \"Effect\": \"Allow\",
       \"Action\": \"kinesis:PutRecord\",
       \"Resource\": \"arn:aws:kinesis:${REGION}:${KINESIS_ACCOUNT_ID}:stream/${STREAM_NAME}\"
-    },
-    {
-      \"Effect\": \"Allow\",
-      \"Action\": \"iam:PassRole\",
-      \"Resource\": \"arn:aws:iam::${KINESIS_ACCOUNT_ID}:role/${SENDING_ROLE_NAME}\"
     }
   ]
 }
@@ -216,7 +215,9 @@ aws iam \
     --role-name ${SENDING_ROLE_NAME} \
     --policy-name ${PERMISSION_POLICY_FOR_ROLE_NAME} \
     --policy-document file://~/PermissionsForCWL.json
-KINESIS_ROLE_ARN="arn:aws:iam::${KINESIS_ACCOUNT_ID}:role/${SENDING_ROLE_NAME}"
+
+# waiting for policy
+sleep $DELAY
 
 # 5. create Kinesis Stream Destination
 
@@ -227,7 +228,7 @@ aws logs \
     --region ${REGION} \
     --destination-name "${DESTINATION_NAME}" \
     --target-arn "arn:aws:kinesis:${REGION}:${KINESIS_ACCOUNT_ID}:stream/${STREAM_NAME}" \
-    --role-arn "${KINESIS_ROLE_ARN}"
+    --role-arn "${CLOUDWATCH_ROLE_ARN}"
 DESTINATION_ARN="arn:aws:logs:${REGION}:${KINESIS_ACCOUNT_ID}:destination:${DESTINATION_NAME}"
 
 # 6. create policy for the CloudWatch account on the Kinesis Stream destination
@@ -263,7 +264,7 @@ echo creating Kinesis subscription filter on destination ${DESTINATION_NAME} of 
 if [ $KINESIS_ACCOUNT_ID != $CLOUDWATCH_ACCOUNT_ID ]; then
   aws logs \
       put-subscription-filter \
-    --region ${REGION} \
+      --region ${REGION} \
       --log-group-name "${LOG_GROUP_NAME}" \
       --filter-name "${STREAM_FILTER_NAME}" \
       --filter-pattern "${FILTER_PATTERN}" \
@@ -352,6 +353,25 @@ else
 fi
 " > "${UNINSTALL_SCRIPT_FILE}"
 
+# 10. create validation script
+echo "#!/bin/bash
+result=\$(aws kinesis \\
+      get-shard-iterator \\
+      --region ${REGION} \\
+      --stream-name ${STREAM_NAME} \\
+      --shard-id shardId-000000000000 \\
+      --shard-iterator-type TRIM_HORIZON \\
+      --output text \\
+      --query 'ShardIterator')
+echo stream ${STREAM_NAME} shard iterator \"\${result}\"
+aws kinesis get-records \\
+      --region ${REGION} \\
+      --limit 2 \\
+      --shard-iterator \"\${result}\"
+" > "${VALIDATION_SCRIPT_FILE}"
+
+# 11. report setup configuration
+
 echo Parameters for kAudit setup:
 echo ---------------------------
 echo user credentials:
@@ -365,4 +385,5 @@ echo kinesis stream name="${STREAM_NAME}"
 echo "EKS Audit Log Setup for Alcide kAudit complete!"
 echo "Please follow Alcide kAudit installation guide to verify the EKS setup and integrate with kAudit."
 echo "Setup may be reverted using the script at: ${UNINSTALL_SCRIPT_FILE}"
+echo "Setup may be validated using the script at: ${VALIDATION_SCRIPT_FILE}"
 
