@@ -77,6 +77,8 @@ REM name of kAudit user policy
 SET PERMISSION_POLICY_FOR_KAUDIT_USER_NAME=Permissions-Policy-For-%KAUDIT_USER_NAME%
 REM name uninstall script
 SET UNINSTALL_SCRIPT_FILE=kaudit-eks-uninstall-%CLUSTER_NAME%.bat
+REM name validation script
+SET VALIDATION_SCRIPT_FILE=kaudit-eks-validation-%CLUSTER_NAME%.bat
 
 REM Variables that should not be changed
 REM CloudWatch EKS audit log group
@@ -115,7 +117,6 @@ if not %errorlevel% EQU 0 (
   echo FAILED
   goto UNINSTALLER
 )
-timeout 60 > NUL
 
 REM 3. create Role that will be used for putting filtered records from CloudWatch, the cluster audit entries, on the Kinesis Stream
 echo creating role %SENDING_ROLE_NAME% that can be assumed by CloudWatch for putting records on Kinesis Stream
@@ -135,9 +136,12 @@ if not %errorlevel% EQU 0 (
   echo FAILED
   goto UNINSTALLER
 )
-SET CLOUDWATCH_ROLE_ARN=arn:aws:iam::%CLOUDWATCH_ACCOUNT_ID%:role/%SENDING_ROLE_NAME%
+SET CLOUDWATCH_ROLE_ARN=arn:aws:iam::%KINESIS_ACCOUNT_ID%:role/%SENDING_ROLE_NAME%
 
 REM 4. create Policy for the Role that will be used for putting filtered records from CloudWatch, the cluster audit entries, on the Kinesis Stream
+
+REM Waiting for Stream to be active and Role to exist
+timeout 30 > NUL
 
 echo creating policy %PERMISSION_POLICY_FOR_ROLE_NAME% for role %SENDING_ROLE_NAME% to enable it to put filtered records from CloudWatch on the Kinesis Stream
 
@@ -147,11 +151,6 @@ echo { ^
       "Effect": "Allow", ^
       "Action": "kinesis:PutRecord", ^
       "Resource": "arn:aws:kinesis:%REGION%:%KINESIS_ACCOUNT_ID%:stream/%STREAM_NAME%" ^
-    }, ^
-    { ^
-      "Effect": "Allow", ^
-      "Action": "iam:PassRole", ^
-      "Resource": "arn:aws:iam::%KINESIS_ACCOUNT_ID%:role/%SENDING_ROLE_NAME%" ^
     } ^
   ] ^
 } > PermissionsForCWL.json
@@ -164,7 +163,11 @@ if not %errorlevel% EQU 0 (
   echo FAILED
   goto UNINSTALLER
 )
-SET KINESIS_ROLE_ARN=arn:aws:iam::%KINESIS_ACCOUNT_ID%:role/%SENDING_ROLE_NAME%
+
+REM Waiting for Policy
+timeout 30 > NUL
+
+REM SET KINESIS_ROLE_ARN=arn:aws:iam::%KINESIS_ACCOUNT_ID%:role/%SENDING_ROLE_NAME%
 
 REM 5. create Kinesis Stream Destination
 
@@ -175,7 +178,7 @@ aws logs ^
     --region %REGION% ^
     --destination-name %DESTINATION_NAME% ^
     --target-arn arn:aws:kinesis:%REGION%:%KINESIS_ACCOUNT_ID%:stream/%STREAM_NAME% ^
-    --role-arn %KINESIS_ROLE_ARN%
+    --role-arn %CLOUDWATCH_ROLE_ARN%
 if not %errorlevel% EQU 0 (
   echo FAILED
   goto UNINSTALLER
@@ -216,7 +219,7 @@ echo creating Kinesis subscription filter on destination %DESTINATION_NAME% of s
 if not "%KINESIS_ACCOUNT_ID%"=="%CLOUDWATCH_ACCOUNT_ID%" (
   aws logs ^
       put-subscription-filter ^
-    --region %REGION% ^
+      --region %REGION% ^
       --log-group-name %LOG_GROUP_NAME% ^
       --filter-name %STREAM_FILTER_NAME% ^
       --filter-pattern "%FILTER_PATTERN%" ^
@@ -286,13 +289,44 @@ echo kinesis stream name=%STREAM_NAME%
 echo EKS Audit Log Setup for Alcide kAudit complete!
 echo Please follow Alcide kAudit installation guide to verify the EKS setup and integrate with kAudit.
 
+REM 10. create validation script
+(
+echo @echo off
+echo setlocal
+echo FOR /F "tokens=*" %%%%g IN ^('aws kinesis ^^
+echo       get-shard-iterator ^^
+echo       --region %REGION% ^^
+echo       --stream-name %STREAM_NAME% ^^
+echo       --shard-id shardId-000000000000 ^^
+echo       --shard-iterator-type TRIM_HORIZON ^^
+echo       --output text ^^
+echo       --query "ShardIterator"'^) DO set result=%%%%g
+echo echo stream %STREAM_NAME% shard iterator "%%result%%"
+echo aws kinesis get-records ^^
+echo       --region %REGION% ^^
+echo       --limit 2 ^^
+echo       --shard-iterator "%%result%%"
+) > "%VALIDATION_SCRIPT_FILE%"
+
 :UNINSTALLER
-REM 10. create uninstall script
+REM 11. create uninstall script
 
 (
 echo @echo off
 echo setlocal
 echo SET KAUDIT_ACCESS_KEY_ID=
+echo :argsinitial
+echo if "%%1"=="" goto argsdone
+echo set aux=%%1
+echo if "%%aux:~0,1%%"=="-" ^(
+echo    set nome=%%aux:~1,250%%
+echo ^) else ^(
+echo    set "%%nome%%=%%1"
+echo    set nome=
+echo ^)
+echo shift
+echo goto argsinitial
+echo :argsdone
 echo aws eks ^^
 echo    --region %REGION% ^^
 echo    update-cluster-config ^^
@@ -322,17 +356,21 @@ echo aws iam ^^
 echo    delete-user-policy ^^
 echo    --user-name %KAUDIT_USER_NAME% ^^
 echo    --policy-name %PERMISSION_POLICY_FOR_KAUDIT_USER_NAME%
-echo if not "%%KAUDIT_ACCESS_KEY_ID%%"=="" ^(
+echo if "%%KAUDIT_ACCESS_KEY_ID%%"=="" ^(
+echo   echo Skipping deletion of access key and user, to delete re-run with argument: -KAUDIT_ACCESS_KEY_ID=^^^<key ID^^^>
+echo ^) else ^(
 echo   aws iam ^^
 echo      delete-access-key ^^
 echo      --user-name %KAUDIT_USER_NAME% ^^
 echo      --access-key-id %%KAUDIT_ACCESS_KEY_ID%%
+echo   aws iam ^^
+echo      delete-user ^^
+echo      --user-name %KAUDIT_USER_NAME%
 echo ^)
-echo aws iam ^^
-echo    delete-user ^^
-echo    --user-name %KAUDIT_USER_NAME%
 ) > "%UNINSTALL_SCRIPT_FILE%"
 
 echo Setup may be reverted using the script at: %UNINSTALL_SCRIPT_FILE%
+echo Setup may be validated using the script at: %VALIDATION_SCRIPT_FILE%
+
 
 :EOF
