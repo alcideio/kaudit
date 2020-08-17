@@ -28,6 +28,7 @@ spec:
         policy.alcide.io/outbound0: service://kube-dns
         policy.alcide.io/outbound1: service://coredns
         policy.alcide.io/outbound2: service://kaudit-{{ .Values.clusterName }}
+        policy.alcide.io/outbound3: tcp://s3.us-west-2.amazonaws.com:443
 {{ if eq .Values.vault.mode "agent-inject" }}
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "kaudit-{{ .Values.clusterName }}"
