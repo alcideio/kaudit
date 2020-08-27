@@ -146,6 +146,12 @@ while true; do
             exit 1
           fi
         fi
+        MARKETPLACE="false"
+        e_arrow "Subscribed through AWS Marketplace? [y/N]"
+        read
+        if [[ $REPLY =~ [yY]$ ]]; then
+          MARKETPLACE="true"
+        fi
         helmargs+=(--set k8sAuditEnvironment=eks)
         helmargs+=(--set aws.region="${AWS_REGION}")
         helmargs+=(--set aws.accessKeyId="${AWS_ACCESS_KEY_ID}")    
@@ -248,20 +254,45 @@ while true; do
   fi
 done
 
+if [[ $MARKETPLACE == true ]]; then
+
+  AWS_DIR=~/.aws
+  e_arrow "Specify your AWS config directory path (including the AWS account used to subscribe kAudit trough the Marketplace): [default: ~/.aws]"
+  read
+  if [[ ! -z "${REPLY// }" ]]; then
+    AWS_DIR=$REPLY
+  fi
+
+  AWS_PROFILE_NAME="default"
+  e_arrow "Specify the AWS profile (which you used to subscribe kAudit trough the Marketplace): [default: default]"
+  read
+  if [[ ! -z "${REPLY// }" ]]; then
+    AWS_PROFILE_NAME=$REPLY
+  fi
+
+  DOCKER_PASS=$(docker run --rm -it -v $AWS_DIR:/root/.aws amazon/aws-cli --profile $AWS_PROFILE_NAME ecr get-login-password --region us-east-1 | tr -d '\r')
+  USER_PASS_B64=$(echo -n AWS:$DOCKER_PASS | base64)
+  REGISTRY="117940112483.dkr.ecr.us-east-1.amazonaws.com"
+  ALCIDE_REPOSITORY_TOKEN=$(echo -n "{\"auths\":{\"${REGISTRY}\":{\"username\":\"AWS\",\"password\":\"${DOCKER_PASS}\",\"auth\":\"${USER_PASS_B64}\"}}}" | base64)
+
+  helmargs+=(--set image.kaudit="${REGISTRY}/209df288-4da3-4c1a-878b-6a8af5d523b4/cg-2695406193/kaudit:2.3-latest")
+
+else
+  e_arrow "Alcide repository token: "
+  read ALCIDE_REPOSITORY_TOKEN
+  if [[ -z "${ALCIDE_REPOSITORY_TOKEN// }" ]]; then
+    e_warning "No Alcide repository token"
+    if [[ -z "${EXTERNAL_CONFIG}" ]]; then
+      exit 1
+    fi
+  fi
+fi
+
 NAMESPACE="alcide-kaudit"
 e_arrow "Deployment namespace: [default: ${NAMESPACE}] "
 read REPLY
 if [[ ! -z "${REPLY// }" ]]; then
   NAMESPACE=$REPLY
-fi
-
-e_arrow "Alcide repository token: "
-read ALCIDE_REPOSITORY_TOKEN
-if [[ -z "${ALCIDE_REPOSITORY_TOKEN// }" ]]; then
-  e_warning "No Alcide repository token"
-  if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-    exit 1
-  fi
 fi
 
 # normalize cluster name as k8s object name part, not assuming sed, tr etc. exist
