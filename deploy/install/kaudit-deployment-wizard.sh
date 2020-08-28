@@ -150,6 +150,9 @@ while true; do
         e_arrow "Subscribed through AWS Marketplace? [y/N]"
         read
         if [[ $REPLY =~ [yY]$ ]]; then
+          e_warning "==="
+          e_warning "to deploy kAudit your EKS cluster should be running in the same AWS Marketplace account."
+          e_warning "==="
           MARKETPLACE="true"
         fi
         helmargs+=(--set k8sAuditEnvironment=eks)
@@ -255,28 +258,9 @@ while true; do
 done
 
 if [[ $MARKETPLACE == true ]]; then
-
-  AWS_DIR=~/.aws
-  e_arrow "Specify your AWS config directory path (including the AWS account used to subscribe kAudit trough the Marketplace): [default: ~/.aws]"
-  read
-  if [[ ! -z "${REPLY// }" ]]; then
-    AWS_DIR=$REPLY
-  fi
-
-  AWS_PROFILE_NAME="default"
-  e_arrow "Specify the AWS profile (which you used to subscribe kAudit trough the Marketplace): [default: default]"
-  read
-  if [[ ! -z "${REPLY// }" ]]; then
-    AWS_PROFILE_NAME=$REPLY
-  fi
-
-  DOCKER_PASS=$(docker run --rm -it -v $AWS_DIR:/root/.aws amazon/aws-cli --profile $AWS_PROFILE_NAME ecr get-login-password --region us-east-1 | tr -d '\r')
-  USER_PASS_B64=$(echo -n AWS:$DOCKER_PASS | base64)
   REGISTRY="117940112483.dkr.ecr.us-east-1.amazonaws.com"
-  ALCIDE_REPOSITORY_TOKEN=$(echo -n "{\"auths\":{\"${REGISTRY}\":{\"username\":\"AWS\",\"password\":\"${DOCKER_PASS}\",\"auth\":\"${USER_PASS_B64}\"}}}" | base64)
-
   helmargs+=(--set image.kaudit="${REGISTRY}/209df288-4da3-4c1a-878b-6a8af5d523b4/cg-2695406193/kaudit:2.3-latest")
-
+  helmargs+=(--set image.pullSecretToken="Marketplace")
 else
   e_arrow "Alcide repository token: "
   read ALCIDE_REPOSITORY_TOKEN
@@ -286,6 +270,8 @@ else
       exit 1
     fi
   fi
+
+  helmargs+=(--set image.pullSecretToken="${ALCIDE_REPOSITORY_TOKEN}")
 fi
 
 NAMESPACE="alcide-kaudit"
@@ -305,7 +291,6 @@ DEPLOYMENT_FILE="${NAME}.yaml"
 
 
 helmargs+=(--set namespace="${NAMESPACE}")
-helmargs+=(--set image.pullSecretToken="${ALCIDE_REPOSITORY_TOKEN}")
 helmargs+=(--set clusterName="${CLUSTER_NAME}")
 helmargs+=(--set runOptions.eulaSign="true")
 
