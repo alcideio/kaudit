@@ -146,6 +146,15 @@ while true; do
             exit 1
           fi
         fi
+        MARKETPLACE="false"
+        e_arrow "Subscribed through AWS Marketplace? [y/N]"
+        read
+        if [[ $REPLY =~ [yY]$ ]]; then
+          e_warning "==="
+          e_warning "to deploy kAudit your EKS cluster should be running in the same AWS Marketplace account."
+          e_warning "==="
+          MARKETPLACE="true"
+        fi
         helmargs+=(--set k8sAuditEnvironment=eks)
         helmargs+=(--set aws.region="${AWS_REGION}")
         helmargs+=(--set aws.accessKeyId="${AWS_ACCESS_KEY_ID}")    
@@ -248,20 +257,28 @@ while true; do
   fi
 done
 
+if [[ $MARKETPLACE == true ]]; then
+  REGISTRY="117940112483.dkr.ecr.us-east-1.amazonaws.com"
+  helmargs+=(--set image.kaudit="${REGISTRY}/209df288-4da3-4c1a-878b-6a8af5d523b4/cg-2695406193/kaudit:2.3-latest")
+  helmargs+=(--set image.pullSecretToken="Marketplace")
+else
+  e_arrow "Alcide repository token: "
+  read ALCIDE_REPOSITORY_TOKEN
+  if [[ -z "${ALCIDE_REPOSITORY_TOKEN// }" ]]; then
+    e_warning "No Alcide repository token"
+    if [[ -z "${EXTERNAL_CONFIG}" ]]; then
+      exit 1
+    fi
+  fi
+
+  helmargs+=(--set image.pullSecretToken="${ALCIDE_REPOSITORY_TOKEN}")
+fi
+
 NAMESPACE="alcide-kaudit"
 e_arrow "Deployment namespace: [default: ${NAMESPACE}] "
 read REPLY
 if [[ ! -z "${REPLY// }" ]]; then
   NAMESPACE=$REPLY
-fi
-
-e_arrow "Alcide repository token: "
-read ALCIDE_REPOSITORY_TOKEN
-if [[ -z "${ALCIDE_REPOSITORY_TOKEN// }" ]]; then
-  e_warning "No Alcide repository token"
-  if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-    exit 1
-  fi
 fi
 
 # normalize cluster name as k8s object name part, not assuming sed, tr etc. exist
@@ -274,7 +291,6 @@ DEPLOYMENT_FILE="${NAME}.yaml"
 
 
 helmargs+=(--set namespace="${NAMESPACE}")
-helmargs+=(--set image.pullSecretToken="${ALCIDE_REPOSITORY_TOKEN}")
 helmargs+=(--set clusterName="${CLUSTER_NAME}")
 helmargs+=(--set runOptions.eulaSign="true")
 

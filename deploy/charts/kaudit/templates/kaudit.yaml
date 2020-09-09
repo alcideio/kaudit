@@ -94,9 +94,10 @@ spec:
               path: vault-agent-config.hcl
           name: vault-agent-config-kaudit-{{ .Values.clusterName }}
 {{- end }}          
- 
+{{- if ne .Values.image.pullSecretToken "Marketplace" }}
       imagePullSecrets:
         - name: registry.alcide.io-{{ .Values.clusterName }}
+{{- end }}
       # Pod Security
       serviceAccountName: alcide-k8s-kaudit-{{ .Values.clusterName }}      
       securityContext:
