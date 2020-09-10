@@ -94,7 +94,7 @@ spec:
               path: vault-agent-config.hcl
           name: vault-agent-config-kaudit-{{ .Values.clusterName }}
 {{- end }}          
-{{- if ne .Values.image.pullSecretToken "Marketplace" }}
+{{- if ne .Values.image.source "Marketplace" }}
       imagePullSecrets:
         - name: registry.alcide.io-{{ .Values.clusterName }}
 {{- end }}

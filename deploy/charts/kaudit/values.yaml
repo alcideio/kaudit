@@ -1,6 +1,7 @@
 namespace: alcide-kaudit
 clusterName: mycluster
 image:
+  source: Sales
   kaudit: "gcr.io/dcvisor-162009/alcide/dcvisor/kaudit:latest"
   pullPolicy: Always #Always for :latest or no tag, IfNotPresent for other tags
   pullSecretToken: GetYourTokenFromAlcide

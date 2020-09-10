@@ -258,9 +258,9 @@ while true; do
 done
 
 if [[ $MARKETPLACE == true ]]; then
+  helmargs+=(--set image.source="Marketplace")
   REGISTRY="117940112483.dkr.ecr.us-east-1.amazonaws.com"
   helmargs+=(--set image.kaudit="${REGISTRY}/209df288-4da3-4c1a-878b-6a8af5d523b4/cg-2695406193/kaudit:2.3-latest")
-  helmargs+=(--set image.pullSecretToken="Marketplace")
 else
   e_arrow "Alcide repository token: "
   read ALCIDE_REPOSITORY_TOKEN
