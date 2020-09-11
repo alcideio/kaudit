@@ -56,6 +56,43 @@ function finish {
 trap finish EXIT
 stty -icanon
 
+# Set default value (optional): Environment_Variable_Name="value"
+# Usage: get_input <Environment Variable Name> <Prompt Message> <Warning Message> <Expected Values>
+function get_input()
+{
+    local prompt_msg=$2
+    local warning_msg=$3
+    local expected_values=$4
+    local env=$1
+    local env_preset_value=$(eval echo "\$$env")
+
+    if [[ "${env_preset_value}" ]] && [[ -z "${expected_values}" ]]; then
+        e_arrow "${prompt_msg}: [default: ${env_preset_value}]"
+    else
+        e_arrow "${prompt_msg}:"
+    fi
+
+    read -e
+    if [[ "${expected_values}" ]] && \
+      [[ ! $REPLY =~ ["${expected_values}"]$ ]] && \
+      [[ ! $env_preset_value =~ ["${expected_values}"]$ ]]; then
+        e_warning "Invalid input: [${REPLY}]"
+        e_warning "Expected input: [${expected_values}]"
+        e_warning "Please try again..."
+        get_input "${env}" "${prompt_msg}" "${warning_msg}" "${expected_values}"
+    elif [[ "${REPLY}" ]]; then
+        eval $env=$REPLY
+        if [[ "${warning_msg}" ]]; then
+            e_warning "==="
+            e_warning "${warning_msg}"
+            e_warning "==="
+        fi
+    elif [ -z "${env_preset_value}" ] && [ -z "${EXTERNAL_CONFIG}" ]; then
+        e_warning "Missing input!"
+        get_input "${env}" "${prompt_msg}" "${warning_msg}" "${expected_values}"
+    fi
+}
+
 clear
 e_header "Alcide's kAudit Deployment Generator"
 #echo -------------------------------------
@@ -65,221 +102,111 @@ package_exist helm
 
 helmargs=()
 
-e_arrow "Cluster name: "
-read CLUSTER_NAME
-if [ $CLUSTER_NAME = "" ]; then
-  e_error "No cluster name"
-  exit 1
-fi
+get_input CLUSTER_NAME "Cluster name"
 
-EXTERNAL_CONFIG=""
-e_arrow "Using Vault configuration: [y/N]"
-read
-if [[ $REPLY =~ [yY]$ ]]; then
+VAULT_CONFIG="N"
+get_input VAULT_CONFIG "Using Vault configuration: [y/N]" "" "yYnN"
+if [[ $VAULT_CONFIG =~ [yY]$ ]]; then
   EXTERNAL_CONFIG="vault"
+else
+  EXTERNAL_CONFIG=""
 fi
 
 CLUSTER_TYPE="" # k8s, gke, aks, eks, s3
 
-e_arrow 'Type Of Monitored Cluster: [G] GKE / [E] EKS / [A] AKS / [K] Kubernetes (native) / [W] Kubernetes (webhook) / [S] S3 backup bucket / [0] Exit'
-while true; do
-  read -p "Enter selection: "
-  if [[ $REPLY =~ ^[GEAKWS0]$ ]]; then
-    case $REPLY in
-      G)
-        CLUSTER_TYPE="gke"
+get_input K8S_PROVIDER "Type Of Monitored Cluster: [G] GKE / [E] EKS / [A] AKS / [K] Kubernetes (native) / [W] Kubernetes (webhook) / [S] S3 backup bucket / [0] Exit" \
+                       "" "GEAKWS0"
 
-        e_arrow "GKE access token (for StackDriver, base64-encoded): "
-        read GKE_TOKEN
-        if [[ -z "${GKE_TOKEN// }" ]]; then
-          e_warning "No GKE access token"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "GKE project of the cluster: "
-        read GKE_PROJECT
-        if [[ -z "${GKE_PROJECT// }" ]]; then
-          e_warning "No GKE project"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
+case $K8S_PROVIDER in
+  G)
+    CLUSTER_TYPE="gke"
 
-        helmargs+=(--set k8sAuditEnvironment=gke)
-        helmargs+=(--set gke.projectId="${GKE_PROJECT}")
-        helmargs+=(--set gke.token="${GKE_TOKEN}")
+    get_input GKE_TOKEN "GKE access token (for StackDriver, base64-encoded)"
+    get_input GKE_PROJECT "GKE project of the cluster"
 
-        break
-        ;;
-      E)
-        CLUSTER_TYPE="eks"
-        e_arrow "AWS access key id (for Kinesis stream): "
-        read AWS_ACCESS_KEY_ID
-        if [[ -z "${AWS_ACCESS_KEY_ID// }" ]]; then
-          e_warning "No AWS access key id"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "AWS secret access key (for Kinesis stream, base64-encoded): "
-        read AWS_SECRET_ACCESS_KEY
-        if [[ -z "${AWS_SECRET_ACCESS_KEY// }" ]]; then
-          e_warning "No AWS secret access key"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "AWS region (for Kinesis stream): "
-        read AWS_REGION
-        if [[ -z "${AWS_REGION// }" ]]; then
-          e_warning "No AWS region"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "AWS Kinesis stream name: "
-        read AWS_STREAM_NAME
-        if [[ -z "${AWS_STREAM_NAME// }" ]]; then
-          e_warning "No AWS Kinesis stream name"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        MARKETPLACE="false"
-        e_arrow "Subscribed through AWS Marketplace? [y/N]"
-        read
-        if [[ $REPLY =~ [yY]$ ]]; then
-          e_warning "==="
-          e_warning "to deploy kAudit your EKS cluster should be running in the same AWS Marketplace account."
-          e_warning "==="
-          MARKETPLACE="true"
-        fi
-        helmargs+=(--set k8sAuditEnvironment=eks)
-        helmargs+=(--set aws.region="${AWS_REGION}")
-        helmargs+=(--set aws.accessKeyId="${AWS_ACCESS_KEY_ID}")    
-        helmargs+=(--set aws.secretAccessKey="${AWS_SECRET_ACCESS_KEY}")
-        helmargs+=(--set aws.kinesisStreamName="${AWS_STREAM_NAME}")             
-        break
-        ;;
-      A)
-        CLUSTER_TYPE="aks"
-        e_arrow "Azure EventHub name: "
-        read AKS_EVENT_HUB_NAME
-        if [[ -z "${AKS_EVENT_HUB_NAME// }" ]]; then
-          e_warning "Azure EventHub name"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "Azure EventHub connection string (base64-encoded): "
-        read AKS_CONNECTION_STRING
-        if [[ -z "${AKS_CONNECTION_STRING// }" ]]; then
-          e_warning "No Azure EventHub connection string"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "No Azure EventHub ConsumerGroup name [default: \$Default]: "
-        read AKS_CONSUMER_GROUP_NAME
+    helmargs+=(--set k8sAuditEnvironment="${CLUSTER_TYPE}")
+    helmargs+=(--set gke.projectId="${GKE_PROJECT}")
+    helmargs+=(--set gke.token="${GKE_TOKEN}")
+    ;;
+  E)
+    CLUSTER_TYPE="eks"
 
-        helmargs+=(--set k8sAuditEnvironment=aks)
-        helmargs+=(--set aks.eventHubName="${AKS_EVENT_HUB_NAME}")
-        helmargs+=(--set aks.eventHubconnectionString="${AKS_CONNECTION_STRING}")    
-        helmargs+=(--set aks.consumerGroupName="${AKS_CONSUMER_GROUP_NAME}") 
+    get_input AWS_AKI "AWS access key id (for Kinesis stream)"
+    get_input AWS_SAK "AWS secret access key (for Kinesis stream, base64-encoded)"
+    get_input AWS_REGION "AWS region (for Kinesis stream)"
+    get_input AWS_STREAM_NAME "AWS Kinesis stream name"
+    AWS_MARKETPLACE="N"
+    get_input AWS_MARKETPLACE "Subscribed through AWS Marketplace? [y/N]" "In order to deploy kAudit, your EKS cluster should be running in the same AWS Marketplace account." "yYnN"
 
-        break
-        ;;
-      K)
-        CLUSTER_TYPE="k8s"
-        helmargs+=(--set k8s.mode="auditsink")
-        e_note "Install Kubernetes Audit Sink in the monitored cluster"
-        break
-        ;;
-      W)
-        CLUSTER_TYPE="k8s"
-        helmargs+=(--set k8s.mode="webhook")
-        break
-        ;;        
-      S)
-        CLUSTER_TYPE="s3"
-        e_arrow "AWS access key id (for S3): "
-        read AWS_ACCESS_KEY_ID
-        if [[ -z "${AWS_ACCESS_KEY_ID// }" ]]; then
-          e_warning "No AWS access key id"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "AWS secret access key (for S3, base64-encoded): "
-        read AWS_SECRET_ACCESS_KEY
-        if [[ -z "${AWS_SECRET_ACCESS_KEY// }" ]]; then
-          e_warning "No AWS secret access key"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "AWS region (for S3): "
-        read AWS_REGION
-        if [[ -z "${AWS_REGION// }" ]]; then
-          e_warning "No AWS region"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "S3 bucket name: "
-        read AWS_BUCKET_NAME
-        if [[ -z "${AWS_BUCKET_NAME// }" ]]; then
-          e_warning "No S3 bucket name"
-          if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-            exit 1
-          fi
-        fi
-        e_arrow "S3 resources keys prefix: "
-        read AWS_RESOURCE_KEY_PREFIX
+    helmargs+=(--set k8sAuditEnvironment="${CLUSTER_TYPE}")
+    helmargs+=(--set aws.region="${AWS_REGION}")
+    helmargs+=(--set aws.accessKeyId="${AWS_AKI}")
+    helmargs+=(--set aws.secretAccessKey="${AWS_SAK}")
+    helmargs+=(--set aws.kinesisStreamName="${AWS_STREAM_NAME}")
+    if [[ $AWS_MARKETPLACE =~ [yY] ]]; then
+      AWS_IMG_REGISTRY_REGION="us-east-1"
+      get_input AWS_IMG_REGISTRY_REGION "Registry region (for Alcide kAudit image)"
+      REGISTRY="117940112483.dkr.ecr.${AWS_IMG_REGISTRY_REGION}.amazonaws.com"
 
-        helmargs+=(--set k8sAuditEnvironment=s3)
-        helmargs+=(--set aws.region="${AWS_REGION}")
-        helmargs+=(--set aws.accessKeyId="${AWS_ACCESS_KEY_ID}")    
-        helmargs+=(--set aws.secretAccessKey="${AWS_SECRET_ACCESS_KEY}")
-        helmargs+=(--set aws.s3BucketName="${AWS_BUCKET_NAME}") 
-        helmargs+=(--set aws.s3ResourceKeyPrefix="${AWS_RESOURCE_KEY_PREFIX}") 
+      helmargs+=(--set image.source="Marketplace")
+      helmargs+=(--set image.kaudit="${REGISTRY}/209df288-4da3-4c1a-878b-6a8af5d523b4/cg-2695406193/kaudit:2.3-latest")
+    else
+      get_input ALCIDE_REPOSITORY_TOKEN "Alcide repository token"
 
-        break
-        ;;
-      0)
-        exit 0
-        ;;
-    esac
-  else
-    e_warning "Invalid selection"
-    continue
-  fi
-done
-
-if [[ $MARKETPLACE == true ]]; then
-  helmargs+=(--set image.source="Marketplace")
-  REGISTRY="117940112483.dkr.ecr.us-east-1.amazonaws.com"
-  helmargs+=(--set image.kaudit="${REGISTRY}/209df288-4da3-4c1a-878b-6a8af5d523b4/cg-2695406193/kaudit:2.3-latest")
-else
-  e_arrow "Alcide repository token: "
-  read ALCIDE_REPOSITORY_TOKEN
-  if [[ -z "${ALCIDE_REPOSITORY_TOKEN// }" ]]; then
-    e_warning "No Alcide repository token"
-    if [[ -z "${EXTERNAL_CONFIG}" ]]; then
-      exit 1
+      helmargs+=(--set image.pullSecretToken="${ALCIDE_REPOSITORY_TOKEN}")
     fi
-  fi
+    ;;
+  A)
+    CLUSTER_TYPE="aks"
 
-  helmargs+=(--set image.pullSecretToken="${ALCIDE_REPOSITORY_TOKEN}")
-fi
+    get_input AKS_EVENT_HUB_NAME "Azure EventHub name"
+    get_input AKS_CONNECTION_STRING "Azure EventHub connection string (base64-encoded)"
+    AKS_CONSUMER_GROUP_NAME="\$Default"
+    get_input AKS_CONSUMER_GROUP_NAME "No Azure EventHub ConsumerGroup name"
+
+    helmargs+=(--set k8sAuditEnvironment="${CLUSTER_TYPE}")
+    helmargs+=(--set aks.eventHubName="${AKS_EVENT_HUB_NAME}")
+    helmargs+=(--set aks.eventHubconnectionString="${AKS_CONNECTION_STRING}")
+    if [[ $AKS_CONSUMER_GROUP_NAME != "\$Default" ]]; then
+      helmargs+=(--set aks.consumerGroupName="${AKS_CONSUMER_GROUP_NAME}")
+    fi
+    ;;
+  K)
+    CLUSTER_TYPE="k8s"
+
+    helmargs+=(--set k8s.mode="auditsink")
+    e_note "Install Kubernetes Audit Sink in the monitored cluster"
+
+    ;;
+  W)
+    CLUSTER_TYPE="k8s"
+
+    helmargs+=(--set k8s.mode="webhook")
+    ;;
+  S)
+    CLUSTER_TYPE="s3"
+
+    get_input AWS_AKI "AWS access key id (for S3)"
+    get_input AWS_SAK "AWS secret access key (for S3, base64-encoded)"
+    get_input AWS_REGION "AWS region (for S3)"
+    get_input AWS_BUCKET_NAME "S3 bucket name"
+    get_input AWS_RESOURCE_KEY_PREFIX "S3 resources keys prefix"
+
+    helmargs+=(--set k8sAuditEnvironment="${CLUSTER_TYPE}")
+    helmargs+=(--set aws.region="${AWS_REGION}")
+    helmargs+=(--set aws.accessKeyId="${AWS_AKI}")
+    helmargs+=(--set aws.secretAccessKey="${AWS_SAK}")
+    helmargs+=(--set aws.s3BucketName="${AWS_BUCKET_NAME}")
+    helmargs+=(--set aws.s3ResourceKeyPrefix="${AWS_RESOURCE_KEY_PREFIX}")
+    ;;
+  0)
+    exit 0
+    ;;
+esac
+
 
 NAMESPACE="alcide-kaudit"
-e_arrow "Deployment namespace: [default: ${NAMESPACE}] "
-read REPLY
-if [[ ! -z "${REPLY// }" ]]; then
-  NAMESPACE=$REPLY
-fi
+get_input NAMESPACE "Deployment namespace" 
 
 # normalize cluster name as k8s object name part, not assuming sed, tr etc. exist
 # should be alphanumeric or '-'
