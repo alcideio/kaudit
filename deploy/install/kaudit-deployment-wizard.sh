@@ -196,18 +196,18 @@ esac
 NAMESPACE="alcide-kaudit"
 get_input NAMESPACE "Deployment namespace" 
 
-    if [[ $AWS_MARKETPLACE =~ [yY] ]]; then
-      AWS_IMG_REGISTRY_REGION="us-east-1"
-      get_input AWS_IMG_REGISTRY_REGION "Registry region (for Alcide kAudit image)"
-      REGISTRY="117940112483.dkr.ecr.${AWS_IMG_REGISTRY_REGION}.amazonaws.com"
+if [[ $AWS_MARKETPLACE =~ [yY] ]]; then
+  AWS_IMG_REGISTRY_REGION="us-east-1"
+  get_input AWS_IMG_REGISTRY_REGION "Registry region (for Alcide kAudit image)"
+  REGISTRY="117940112483.dkr.ecr.${AWS_IMG_REGISTRY_REGION}.amazonaws.com"
 
-      helmargs+=(--set image.source="Marketplace")
-      helmargs+=(--set image.kaudit="${REGISTRY}/209df288-4da3-4c1a-878b-6a8af5d523b4/cg-2695406193/kaudit:2.3-latest")
-    else
-      get_input ALCIDE_REPOSITORY_TOKEN "Alcide repository token"
+  helmargs+=(--set image.source="Marketplace")
+  helmargs+=(--set image.kaudit="${REGISTRY}/209df288-4da3-4c1a-878b-6a8af5d523b4/cg-2695406193/kaudit:2.3-latest")
+else
+  get_input ALCIDE_REPOSITORY_TOKEN "Alcide repository token"
 
-      helmargs+=(--set image.pullSecretToken="${ALCIDE_REPOSITORY_TOKEN}")
-    fi
+  helmargs+=(--set image.pullSecretToken="${ALCIDE_REPOSITORY_TOKEN}")
+fi
 
 # normalize cluster name as k8s object name part, not assuming sed, tr etc. exist
 # should be alphanumeric or '-'
