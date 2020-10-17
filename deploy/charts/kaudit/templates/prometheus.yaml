@@ -1,0 +1,33 @@
+{{- if eq .Values.runOptions.enablePrometheusMetrics true }}
+{{ if .Capabilities.APIVersions.Has "monitoring.coreos.com/v1" -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kaudit-{{ .Values.clusterName }}
+  namespace: {{ .Values.namespace }} 
+  labels:
+    app: kaudit
+    app-name: kaudit-{{ .Values.clusterName }}
+  annotations:
+    com.alcide.io/component.role: cloud-audit-k8s
+    com.alcide.io/component.tier: database
+    com.alcide.io/info.vendor: Alcide IO Inc.
+spec:
+  jobLabel: kaudit-{{ .Values.clusterName }}
+  selector:
+    matchLabels:
+      app-name: kaudit-{{ .Values.clusterName }}
+  namespaceSelector:
+    matchNames:
+    - {{ .Values.namespace }}
+
+  endpoints:
+  - interval: 60s
+    path: /metrics
+    port: "ui"
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+  
+{{ end -}}
+{{ end -}}

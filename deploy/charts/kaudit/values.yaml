@@ -33,6 +33,9 @@ runOptions:
   activateAnalysis: true
   #  Enable State API 
   enableStateApi: false
+  #  Enable Prometheus Metrics Endpoint ...exposed on https://<kaudit-service>:443/metric
+  #  See https://docs.alcide.io/PUB/kAudit-Monitoring-and-Troubleshooting.1567817729.html#kAuditMonitoringandTroubleshooting-UsingPrometheus
+  enablePrometheusMetrics: true
 
 ingress:
   # Enable Ingress Access to Alcide kAudit

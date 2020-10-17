@@ -13,13 +13,7 @@ create-kind-cluster:  ##@Test create KIND cluster
 delete-kind-cluster:  ##@Test delete KIND cluster
 	kind delete cluster --name kaudit-v1.16
 
-create-minikube-cluster: ##@Test Minikube
-	minikube start --memory=6g --cpus=4 \
-        --extra-config=apiserver.audit-dynamic-configuration=true \
-        --extra-config=apiserver.feature-gates=DynamicAuditing=true \
-        --extra-config=apiserver.runtime-config=auditregistration.k8s.io/v1alpha1=true    
-
-HELM_VERSION=v3.0.2
+HELM_VERSION=v3.2.4
 get-linux-deps: ##@Install Dependencies Linux
 	wget -q https://get.helm.sh/helm-$(HELM_VERSION)-linux-amd64.tar.gz -O - | sudo tar -xzO linux-amd64/helm > /usr/local/bin/helm3
 
