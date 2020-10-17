@@ -230,6 +230,11 @@ spec:
           value: "true"
 {{- end }}
 
+{{- if eq .Values.runOptions.enablePrometheusMetrics true }}       
+        - name: PROMETHEUS_METRICS
+          value: "true"
+{{- end }}
+
 {{ if ne .Values.vault.mode "none" }}        
         - name: EXTERNAL_CONFIG_FILE
           value: /vault/secrets/kaudit.conf
