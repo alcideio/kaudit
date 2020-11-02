@@ -5,6 +5,9 @@ Thank You For Installing Alcide kAudit
 To extract {{ .Values.namespace }}/kaudit-{{ .Values.clusterName }} ca.pem use:
 kubectl -n {{ .Values.namespace }} get secrets kaudit-{{ .Values.clusterName }}-certs -o=jsonpath="{@.data['ca\.pem']}" | base64 -d
 
+Connect to Alcide kAudit Web Dashboard (point your browser to https://localhost:7000):
+kubectl port-forward -n {{ .Values.namespace }} svc/kaudit-{{ .Values.clusterName }} 7000:443
+
 {{- if eq .Values.k8sAuditEnvironment "k8s" }}
 {{- if eq .Values.k8s.mode "webhook" }}
 

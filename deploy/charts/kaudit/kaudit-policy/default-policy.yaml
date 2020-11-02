@@ -110,3 +110,18 @@
   conditions:
     - {field: verb, match-op: =, match-value: create}
     - {field: resource-namespace, match-op: =, match-value: default}
+
+#
+# Enforcement Example
+#
+# - id: 200001
+#   name: enforce - deny exec into kube-system 
+#   status: true
+#   combine-op: and
+#   conditions:
+#     - {field: resource-type, match-op: =, match-value: pods}
+#     - {field: subresource, match-op: =, match-value: exec}
+#     - {field: resource-namespace, match-op: =, match-value: kube-system}
+#   enforcement: {} # Use {} to specify an indefinite enforcement rule
+#     #time-limit: 0 # Expressed in miliseconds. Must be a positive integer
+#     #count-limit: 5 # Limit the number of hits on this rule. Must be a positive integer

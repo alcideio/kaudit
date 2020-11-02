@@ -236,10 +236,14 @@ spec:
           value: "true"
 {{- end }}
 
-{{ if ne .Values.vault.mode "none" }}        
+{{ if ne .Values.vault.mode "none" }}
         - name: EXTERNAL_CONFIG_FILE
           value: /vault/secrets/kaudit.conf
-{{ end }}          
+{{ end }}
+{{ if eq .Values.runOptions.experimental.enableEnforcement true }}
+        - name: ADMISSION_CONTROL
+          value: "true"
+{{ end }}
 
         - name: TOKEN                # GKE-token (for GKE)
           valueFrom:

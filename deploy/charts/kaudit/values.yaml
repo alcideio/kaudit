@@ -36,6 +36,11 @@ runOptions:
   #  Enable Prometheus Metrics Endpoint ...exposed on https://<kaudit-service>:443/metric
   #  See https://docs.alcide.io/PUB/kAudit-Monitoring-and-Troubleshooting.1567817729.html#kAuditMonitoringandTroubleshooting-UsingPrometheus
   enablePrometheusMetrics: true
+  #
+  # Experimental Feature Gates - 
+  experimental:
+    enableEnforcement: false
+
 
 ingress:
   # Enable Ingress Access to Alcide kAudit

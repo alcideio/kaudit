@@ -4,6 +4,9 @@ kind: ConfigMap
 metadata:
   name: vault-agent-config-kaudit-{{ .Values.clusterName }}
   namespace: {{ .Values.namespace }}
+  labels:
+    app: kaudit
+    app-name: kaudit-{{ .Values.clusterName }}  
 apiVersion: v1
 data:
   vault-agent-config.hcl: |-
