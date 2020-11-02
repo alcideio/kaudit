@@ -15,6 +15,7 @@ delete-kind-cluster:  ##@Test delete KIND cluster
 
 install-helm: ##@Test install using helm chart
 	kubectl create ns alcide-kaudit || true
+	kubectl label ns alcide-kaudit skip-kaudit-admission=true || true 
 	helm upgrade -i kaudit deploy/charts/kaudit --namespace alcide-kaudit --wait \
             --set clusterName=mycluster \
             --set k8s.mode=auditsink \
