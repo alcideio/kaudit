@@ -15,4 +15,3 @@ spec:
       name: ui
   selector:
     app-name: kaudit-{{ .Values.clusterName }}
-    
