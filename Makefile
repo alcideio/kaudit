@@ -13,6 +13,17 @@ create-kind-cluster:  ##@Test create KIND cluster
 delete-kind-cluster:  ##@Test delete KIND cluster
 	kind delete cluster --name kaudit-v1.16
 
+install-helm: ##@Test install using helm chart
+	kubectl create ns alcide-kaudit || true
+	kubectl label ns alcide-kaudit skip-kaudit-admission=true || true 
+	helm upgrade -i kaudit deploy/charts/kaudit --namespace alcide-kaudit --wait \
+            --set clusterName=mycluster \
+            --set k8s.mode=auditsink \
+            --set runOptions.enableStateApi=true \
+            --set runOptions.experimental.enableEnforcement=true
+delete-helm: ##@Test delete helm chart
+	helm delete kaudit --namespace alcide-kaudit
+
 HELM_VERSION=v3.2.4
 get-linux-deps: ##@Install Dependencies Linux
 	wget -q https://get.helm.sh/helm-$(HELM_VERSION)-linux-amd64.tar.gz -O - | sudo tar -xzO linux-amd64/helm > /usr/local/bin/helm3
@@ -28,7 +39,7 @@ generate-aks:	##@Generate Generate AKS installation
 	helm3 template kaudit deploy/charts/kaudit --set tls.mode="external" --set k8sAuditEnvironment=aks > $(INSTALL_OUTDIR)/kaudit_for_aks.yaml
 
 generate-k8s:	##@Generate Generate Audit Sink installation
-	helm3 template kaudit deploy/charts/kaudit --set tls.mode="external" --set k8sAuditEnvironment=k8s --set k8s.mode="auditsink" > $(INSTALL_OUTDIR)/kaudit_for_auditsink.yaml	
+	helm3 template kaudit deploy/charts/kaudit --set tls.mode="external" --set k8sAuditEnvironment=k8s --set k8s.mode="auditsink" > $(INSTALL_OUTDIR)/kaudit_for_auditsink.yaml		
 
 generate-k8s-webhook:	##@Generate Generate Audit Sink installation
 	helm3 template kaudit deploy/charts/kaudit --set tls.mode="external" --set k8sAuditEnvironment=k8s --set k8s.mode="webhook" > $(INSTALL_OUTDIR)/kaudit_for_webhook.yaml	

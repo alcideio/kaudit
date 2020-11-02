@@ -3,6 +3,9 @@ kind: PersistentVolumeClaim
 metadata:
   name: data-volume-claim-kaudit-{{ .Values.clusterName }}
   namespace: {{ .Values.namespace }}
+  labels:
+    app: kaudit
+    app-name: kaudit-{{ .Values.clusterName }}
 spec:
   #
   # storage class related to environment, or nil for environment's default
@@ -69,6 +72,5 @@ spec:
 # provisioner: kubernetes.io/no-provisioner
 # volumeBindingMode: WaitForFirstConsumer
 # {{ end }}
-
 
 

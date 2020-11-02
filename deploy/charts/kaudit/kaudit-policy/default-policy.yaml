@@ -110,3 +110,39 @@
   conditions:
     - {field: verb, match-op: =, match-value: create}
     - {field: resource-namespace, match-op: =, match-value: default}
+
+#
+# Enforcement Example
+#
+# - id: 200001
+#   name: enforce - deny exec into kube-system (indefinitely)
+#   status: true
+#   combine-op: and
+#   conditions:
+#     - {field: resource-type, match-op: =, match-value: pods}
+#     - {field: subresource, match-op: =, match-value: exec}
+#     - {field: resource-namespace, match-op: =, match-value: kube-system}
+#   enforcement: {} # Use {} to specify an indefinite enforcement rule
+
+# - id: 200002
+#   name: enforce - deny exec into istio-system (for 1 hour)
+#   status: true
+#   combine-op: and
+#   conditions:
+#     - {field: resource-type, match-op: =, match-value: pods}
+#     - {field: subresource, match-op: =, match-value: exec}
+#     - {field: resource-namespace, match-op: =, match-value: istio-system}
+#   enforcement: 
+#     time-limit: 3600000 # Expressed in miliseconds. Must be a positive integer
+
+# - id: 200003
+#   name: enforce - deny exec into default (10 hits)
+#   status: true
+#   combine-op: and
+#   conditions:
+#     - {field: resource-type, match-op: =, match-value: pods}
+#     - {field: subresource, match-op: =, match-value: exec}
+#     - {field: resource-namespace, match-op: =, match-value: default}
+#   enforcement:
+#     count-limit: 10 # Limit the number of hits on this rule. Must be a positive integer
+
