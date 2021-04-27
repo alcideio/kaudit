@@ -75,8 +75,10 @@ function get_input()
     read -e
     if [[ "${REPLY}" ]]; then
       input=$REPLY
-    elif [ "${default_value}" ]; then
+    elif [[ "${default_value}" ]]; then
       input=$default_value
+    elif [[ "${EXTERNAL_CONFIG}" ]]; then
+      echo Using Vault configuration
     else
       e_warning "Missing input!"
       get_input "${env_var}" "${prompt_msg}" "${expected_values}"
@@ -103,6 +105,15 @@ package_exist helm
 helmargs=()
 
 get_input CLUSTER_NAME "Cluster name"
+
+VAULT_CONFIG="N"
+get_input VAULT_CONFIG "Using Vault configuration: [y/N]" "yYnN"
+if [[ $VAULT_CONFIG =~ [yY]$ ]]; then
+  EXTERNAL_CONFIG="vault"
+else
+  EXTERNAL_CONFIG=""
+fi
+
 
 CLUSTER_TYPE="" # k8s, gke, aks, eks, s3
 
