@@ -86,12 +86,12 @@ function get_input()
 
     #validate_input
     if [[ "${expected_values}" ]] && [[ ! $input =~ ["${expected_values}"]$ ]]; then
-      e_warning "Invalid input: [${REPLY}]"
+      e_warning "Invalid input: [${input}]"
       e_warning "Expected input: [${expected_values}]"
       e_warning "Please try again..."
       get_input "${env_var}" "${prompt_msg}" "${expected_values}"
     else
-        eval $env_var=$REPLY
+        eval $env_var=$input
     fi
 }
 
