@@ -58,38 +58,40 @@ stty -icanon
 
 # Set default value (optional): Environment_Variable_Name="value"
 # Usage: get_input <Environment Variable Name> <Prompt Message> <Warning Message> <Expected Values>
+
 function get_input()
 {
     local prompt_msg=$2
-    local warning_msg=$3
-    local expected_values=$4
-    local env=$1
-    local env_preset_value=$(eval echo "\$$env")
+    local expected_values=$3
+    local env_var=$1
+    local default_value=$(eval echo "\$$env_var")
 
-    if [[ "${env_preset_value}" ]] && [[ -z "${expected_values}" ]]; then
-        e_arrow "${prompt_msg}: [default: ${env_preset_value}]"
+    if [[ "${default_value}" ]] && [[ -z "${expected_values}" ]]; then
+        e_arrow "${prompt_msg}: [default: ${default_value}]"
     else
         e_arrow "${prompt_msg}:"
     fi
 
     read -e
-    if [[ "${expected_values}" ]] && \
-      [[ ! $REPLY =~ ["${expected_values}"]$ ]] && \
-      [[ ! $env_preset_value =~ ["${expected_values}"]$ ]]; then
-        e_warning "Invalid input: [${REPLY}]"
-        e_warning "Expected input: [${expected_values}]"
-        e_warning "Please try again..."
-        get_input "${env}" "${prompt_msg}" "${warning_msg}" "${expected_values}"
-    elif [[ "${REPLY}" ]]; then
-        eval $env=$REPLY
-        if [[ "${warning_msg}" ]]; then
-            e_warning "==="
-            e_warning "${warning_msg}"
-            e_warning "==="
-        fi
-    elif [ -z "${env_preset_value}" ] && [ -z "${EXTERNAL_CONFIG}" ]; then
-        e_warning "Missing input!"
-        get_input "${env}" "${prompt_msg}" "${warning_msg}" "${expected_values}"
+    if [[ "${REPLY}" ]]; then
+      input=$REPLY
+    elif [[ "${default_value}" ]]; then
+      input=$default_value
+    elif [[ "${EXTERNAL_CONFIG}" ]]; then
+      echo Using Vault configuration
+    else
+      e_warning "Missing input!"
+      get_input "${env_var}" "${prompt_msg}" "${expected_values}"
+    fi
+
+    #validate_input
+    if [[ "${expected_values}" ]] && [[ ! $input =~ ["${expected_values}"]$ ]]; then
+      e_warning "Invalid input: [${input}]"
+      e_warning "Expected input: [${expected_values}]"
+      e_warning "Please try again..."
+      get_input "${env_var}" "${prompt_msg}" "${expected_values}"
+    else
+        eval $env_var=$input
     fi
 }
 
@@ -105,17 +107,18 @@ helmargs=()
 get_input CLUSTER_NAME "Cluster name"
 
 VAULT_CONFIG="N"
-get_input VAULT_CONFIG "Using Vault configuration: [y/N]" "" "yYnN"
+get_input VAULT_CONFIG "Using Vault configuration: [y/N]" "yYnN"
 if [[ $VAULT_CONFIG =~ [yY]$ ]]; then
   EXTERNAL_CONFIG="vault"
 else
   EXTERNAL_CONFIG=""
 fi
 
+
 CLUSTER_TYPE="" # k8s, gke, aks, eks, s3
 
 get_input K8S_PROVIDER "Type Of Monitored Cluster: [G] GKE / [E] EKS / [A] AKS / [K] Kubernetes (native) / [W] Kubernetes (webhook) / [S] S3 backup bucket / [0] Exit" \
-                       "" "GEAKWS0"
+                       "GEAKWS0"
 
 case $K8S_PROVIDER in
   G)
@@ -136,7 +139,13 @@ case $K8S_PROVIDER in
     get_input AWS_REGION "AWS region (for Kinesis stream)"
     get_input AWS_STREAM_NAME "AWS Kinesis stream name"
     AWS_MARKETPLACE="N"
-    get_input AWS_MARKETPLACE "Subscribed through AWS Marketplace? [y/N]" "In order to deploy kAudit, your EKS cluster should be running in the same AWS Marketplace account." "yYnN"
+    get_input AWS_MARKETPLACE "Subscribed through AWS Marketplace? [y/N]" "yYnN"
+    if [[ $AWS_MARKETPLACE =~ ["yY"]$ ]]; then
+      e_warning "==="
+      e_warning "In order to deploy kAudit, your EKS cluster should be running in the same AWS Marketplace account."
+      e_warning "==="
+    fi
+
 
     helmargs+=(--set k8sAuditEnvironment="${CLUSTER_TYPE}")
     helmargs+=(--set aws.region="${AWS_REGION}")
