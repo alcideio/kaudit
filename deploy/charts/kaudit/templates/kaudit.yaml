@@ -72,6 +72,11 @@ spec:
       - name: cert-volume
         secret:
           secretName: kaudit-{{ .Values.clusterName }}-certs
+      {{ if eq .Values.license.enabled }}
+      - name: entitlement-volume
+        secret:
+          secretName: kaudit-entitlement
+      {{- end }}
       - name: config-volume
         configMap:
             name: kaudit-{{ .Values.clusterName }}
@@ -176,6 +181,11 @@ spec:
           mountPath: /kaudit/integration          
         - name: data-volume
           mountPath: /data
+        {{ if eq .Values.license.enabled }}
+        - name: entitlement-volume
+          mountPath: /kaudit/entitlement
+          readOnly: true
+        {{- end }}
         ports:
           - containerPort: 8443
             protocol: TCP
