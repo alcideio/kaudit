@@ -1,0 +1,73 @@
+
+Enter "customerId" and "entitlement" in the values .yaml of via --set:
+license:
+  enabled : true
+  customerId : cm90ZW0tdGVzdAo= #"rotem-test"
+  entitlement: "TlBZDmyB3YjG+l09yuGOY2lR8wzRWBt/LZ/J32BGC1vnFJNhzOR6kKmiE9zfGzFSVUO6CyQ6Xz6VzfsmoLVae7ogsS2BK8ksBKaKnCUO+PKGor5aT+/ny5ol797AORPz0RFq9mE4VwFNPT4cO13xrVNWTLnXcaJCwgxBIX7qDFXpyL8ufXpMqXlYpTBzSYRhLCA11vUGwpcAp5j40bfCTMOYVjYrnAhJdAltYoUCSCASFCp4s5w+UVoa4BFP+pVfwSg1ddVhCiuWhwhX7mPt/XowC7oDQ5q/MdkJbDqUpNHak+VO16h4/PZ3Apn7mkbLVAV5t/sL3zjtICxJrelLtVDLtEWUMJDO3Vb/KzAEI03+oNRO+Onh2PuiA5Nl5FBxFnpiAvA+Ptr8sDSIhg=="
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+
+
+helm template kaudit-public /Users/rjacoby/workspaces/public_repos/kaudit/deploy/charts/kaudit
+
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+helm upgrade --install kaudit /Users/rjacoby/workspaces/public_repos/kaudit/deploy/charts/kaudit -n kaudit --create-namespace
+
+helm uninstall kaudit-public
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+
+alcide-kaudit:
+- storage.className: Invalid type. Expected: string, given: null
+
+- aws: region is required
+
+- k8s.mode: k8s.mode must be one of the following: "webhook", "auditsink"
+
+Compilation near Runtime(?) errors:
+Error: Secret in version "v1" cannot be handled as a Secret: v1.Secret.Data: decode base64: illegal base64 data at input byte 5, error found in #10 byte of ...|otem-test","entitlem|..., bigger context ...|piVersion":"v1","data":{"customer-id":"rotem-test","entitlement":"TlBZDmyB3YjG+l09yuGOY2lR8wzRWBt/LZ|...
+
+Compilation near Runtime(?) errors:
+Error: unable to build kubernetes objects from release manifest: unable to recognize "": no matches for kind "AuditSink" in version "auditregistration.k8s.io/v1alpha1"
+
+
+Show regex example that blocks entering base64 strings in the values file
+
+
+
+
+Runtime:
+2021-07-02 14:55:30.902 [async-thread-macro-2] INFO i.a.a.state-info - state info:
+integration: []
+
+2021-07-02 14:55:30.904 [async-thread-macro-2] DEBUG i.a.audit.db - reports keys list: #{}
+2021-07-02 14:55:30.908 [async-thread-macro-2] INFO i.a.a.configuration - EKS audit source
+2021-07-02 14:55:30.909 [async-thread-macro-2] WARN i.a.a.analyzer - Analysis stopped, missing required arguments: [:stream-name]
+2021-07-02 14:55:30.909 [main] DEBUG i.a.a.analyzer - analysis execution finished nil
+2021-07-02 14:55:30.909 [main] DEBUG i.a.audit.tasks - no task configuration at /data/task.cfg
+2021-07-02 14:55:32.120 [main] DEBUG i.a.a.integration - integration configuration at /data/integration.cfg :
+[]
+2021-07-02 14:55:32.120 [main] INFO i.a.a.state-info - state info:
+integration: []
+
+
+
+
+
+
+2021-07-02 15:58:40.426 [async-thread-macro-3] ERROR i.a.a.aws-common - AWS assumed-role credentials provider forbidden: {:ErrorResponse {:Error {:Type Sender, :TypeAttrs {}, :Code AccessDenied, :CodeAttrs {}, :Message User: arn:aws:sts::465170182079:assumed-role/app32021011913555621910000000a/i-0152358a933e879ca is not authorized to perform: sts:AssumeRole on resource: arn:aws:iam::465170182079:role/kinesis_reader, :MessageAttrs {}}, :ErrorAttrs {}, :RequestId 9f9ecd6e-e3a0-4f12-88f0-3a0702cc3606, :RequestIdAttrs {}}, :ErrorResponseAttrs {:xmlns https://sts.amazonaws.com/doc/2011-06-15/}, :cognitect.anomalies/category :cognitect.anomalies/forbidden}
+2021-07-02 15:58:40.427 [async-dispatch-2] ERROR i.a.audit.slog - processing eks audit entries : {:cognitect.anomalies/category :cognitect.anomalies/fault, :cognitect.anomalies/message Unable to fetch credentials. See log for more details.}
+clojure.lang.ExceptionInfo: fault: Unable to fetch credentials. See log for more details.
+
+
+
+2021-07-02 17:11:40.708 [async-dispatch-6] DEBUG i.a.audit.slog - invalid Json input: Unrecognized token 'I0702': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')
+at [Source: (StringReader); line: 1, column: 6]
+
+
+
+
+$kubectl get pods -n kaudit
+NAME            READY   STATUS    RESTARTS   AGE
+kaudit-app3-0   1/1     Running   15         131m
