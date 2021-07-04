@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "required": [
+    "namespace",
+    "clusterName",
+    "image",
+    "tls",
+    "k8sAuditEnvironment",
+    "kauditPolicyFile",
+    "kauditIntegrationsFile",
+    "runOptions",
+    "ingress",
+    "storage",
+    "resources",
+    "aks",
+    "gke",
+    "aws",
+    "k8s",
+    "license"
+  ],
+  "properties": {
+    "image": {
+      "required": [
+        "source","kaudit", "pullPolicy", "pullSecretToken"
+      ],
+      "properties": {
+        "Sales": {
+          "type": "string"
+        },
+        "kaudit": {
+          "type": "string"
+        },
+        "pullPolicy": {
+          "type": "string"
+        },
+        "pullSecretToken": {
+          "type": "string"
+        }
+      }
+    },
+    "tls": {
+      "required": [
+        "mode","selfSigned"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["self-signed" , "external"]
+        },
+        "selfSigned": {
+          "type": "object"
+        }
+      }
+    },
+    "storage": {
+      "required": [
+        "size"
+      ],
+      "properties": {
+        "className": {
+          "type": "string"
+        },
+        "size": {
+          "type": "string"
+        }
+      }
+    },
+    "resources": {
+      "required": [
+        "javaXmX",
+        "memoryRequest",
+        "cpuRequest",
+        "memoryLimit",
+        "cpuLimit"
+      ],
+      "properties": {
+        "javaXmX": {
+          "type": "string"
+        },
+        "memoryRequest": {
+          "type": "string"
+        },
+        "cpuRequest": {
+          "type": "string"
+        },
+        "memoryLimit": {
+          "type": "string"
+        },
+        "cpuLimit": {
+          "type": "string"
+        }
+      }
+    },
+    "aks": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "gke": {
+      "type": "object",
+      "required": [
+        "enabled"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "aws": {
+      "type": "object",
+      "required": [
+        "enabled",
+        "kinesisStreamName",
+        "region"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "kinesisStreamName": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        }
+      }
+    },
+    "k8s": {
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["webhook" , "auditsink"]
+        }
+      }
+    },
+    "license" : {
+      "type": "object",
+      "required": [
+        "enabled", "customerId", "entitlement"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "customerId": {
+          "type": "string"
+        },
+        "entitlement": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

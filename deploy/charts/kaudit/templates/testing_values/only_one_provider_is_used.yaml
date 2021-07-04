@@ -1,0 +1,21 @@
+{{ $aksIsEnabled := (eq .Values.aks.enabled  true) }}
+{{ $gkeIsEnabled := (eq .Values.gke.enabled  true) }}
+{{ $eksIsEnabled := (eq .Values.aws.enabled  true) }}
+{{ $aksIsUsed    := and (eq .Values.k8sAuditEnvironment "aks") (eq $aksIsEnabled  true) }}
+{{ $gkeIsUsed    := and (eq .Values.k8sAuditEnvironment "gke") (eq $gkeIsEnabled  true) }}
+{{ $eksIsUsed    := and (eq .Values.k8sAuditEnvironment "eks") (eq $eksIsEnabled  true) }}
+{{ $s3IsUsed     := and (eq .Values.k8sAuditEnvironment "s3")   (eq .Values.aws.enabled  true) }}
+
+{{ $enabledCount := add ($aksIsEnabled | int) ($gkeIsEnabled | int) ($eksIsUsed | int)   }}
+# Debug: Number of cloud provers being used: {{ $enabledCount | toString |  printf "%q"}}
+{{ if gt $enabledCount 1  }}
+  {{ fail "Only one cloud provider can be used!" }}
+{{ else if eq $enabledCount 1 }}
+  {{ if eq .Values.k8sAuditEnvironment "k8s" }}
+  {{ fail "k8sAuditEnvironment of 'k8s' can't ne used with a cloud provider enabled!" }}
+  {{ end }}
+{{ else }}
+  {{ if not (eq .Values.k8sAuditEnvironment "k8s") }}
+  {{ fail "You have to setup at least one cloud provider as enabled or k8 as the k8sAuditEnvironment!" }}
+  {{ end }}
+{{ end }}

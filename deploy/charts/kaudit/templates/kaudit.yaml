@@ -72,7 +72,7 @@ spec:
       - name: cert-volume
         secret:
           secretName: kaudit-{{ .Values.clusterName }}-certs
-      {{ if eq .Values.license.enabled }}
+      {{ if eq .Values.license.enabled true}}
       - name: entitlement-volume
         secret:
           secretName: kaudit-entitlement
@@ -181,7 +181,7 @@ spec:
           mountPath: /kaudit/integration          
         - name: data-volume
           mountPath: /data
-        {{ if eq .Values.license.enabled }}
+        {{ if eq .Values.license.enabled true}}
         - name: entitlement-volume
           mountPath: /kaudit/entitlement
           readOnly: true
