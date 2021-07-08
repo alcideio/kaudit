@@ -1,10 +1,10 @@
-namespace: alcide-kaudit
-clusterName: mycluster
+namespace: kaudit
+clusterName: my-cluster
 image:
   source: Sales
-  kaudit: "gcr.io/dcvisor-162009/alcide/dcvisor/kaudit:latest"
+  kaudit: "gcr.io/dcvisor-162009/alcide/dcvisor/kaudit-testing:license-test"
   pullPolicy: Always #Always for :latest or no tag, IfNotPresent for other tags
-  pullSecretToken: GetYourTokenFromAlcide
+  pullSecretToken:
 
 tls:
   # self-signed | external
@@ -17,7 +17,7 @@ tls:
     alternativeNames: [] #["kaudit.yourdomain.io"]
 
 
-k8sAuditEnvironment:  k8s # Audit Logs Source - one of: k8s, gke, aks, eks, s3
+k8sAuditEnvironment:  eks # Audit Logs Source - one of: k8s, gke, aks, eks, s3
 
 # Customise Alcide kAudit Policy
 kauditPolicyFile: kaudit-policy/default-policy.yaml
@@ -57,7 +57,7 @@ ingress:
 #  AKS: "managed-premium" or default
 #  "local-storage" (a configured StorageClass, see above, as well as related toleration/affinity configuration below)
 storage:
-  className:
+  className: ""
   size: 100Gi
 
 resources:
@@ -70,12 +70,14 @@ resources:
 
 # Azure
 aks:
+  enabled : false
   eventHubName: ""              # Azure EventHubName name (for AKS). If using a non-default ConsumerGroup ($Default), configure it in 'consumer-group-name'.
   eventHubconnectionString: ""  # Azure EventHub connection string (for AKS)
   consumerGroupName: ""         # Azure EventHubName ConsumerGroup name (for AKS), if using a non-default ConsumerGroup (i.e. \$Default).
 
 # GCP
 gke:
+  enabled : false
   projectId: ""                 # GKE-project (for GKE)
   pubsubSubscriptionId: ""      # GKE PubSub subscription ID (only if consuming audit logs via PubSub instead of StackDriver)
   token: ""
@@ -83,12 +85,17 @@ gke:
 
 # EKS or S3
 aws:
+  enabled : true
   kinesisStreamName: ""  # AWS Kinesis stream name (for EKS)
-  region: ""             # AWS Kinesis stream region (for EKS and S3)
+  region:            ""          # AWS Kinesis stream region (for EKS and S3)
+
   accessKeyId: ""        # AWS Kinesis stream credentials (for EKS and S3)
   secretAccessKey: ""
+  serviceAccountRoleArn: "" # Can be used instead of (accessKeyId + secretAccessKey)
+
   s3BucketName: ""       # AWS S3 bucket name (for S3)
   s3ResourceKeyPrefix: "" # AWS S3 logs resources keys prefix (for S3)
+
 
 k8s:
   # webhook or auditsink
@@ -98,7 +105,7 @@ alcide:
   token:
 
 prometheus:
-  token:  
+  token:
 
 #
 # Vault 
@@ -133,3 +140,10 @@ vault:
   # For "vault" mode this parameter is required
   vaultServer: "http://vault.demo:8200" 
   image: "vault:1.3.2"
+
+
+license:
+  enabled : true
+  customerId : ""
+  entitlement: ""
+
