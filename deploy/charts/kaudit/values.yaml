@@ -1,8 +1,8 @@
 namespace: kaudit
-clusterName: app3
+clusterName: my-cluster
 image:
   source: Sales
-  kaudit: "gcr.io/dcvisor-162009/alcide/dcvisor/kaudit:latest"
+  kaudit: "gcr.io/dcvisor-162009/alcide/dcvisor/kaudit-testing:license-test"
   pullPolicy: Always #Always for :latest or no tag, IfNotPresent for other tags
   pullSecretToken:
 
